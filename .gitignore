@@ -1,0 +1,20 @@
+node_modules
+.next
+out
+build
+.DS_Store
+*.log
+
+# Secrets et variables d'environnement
+.env
+.env.local
+.env.*.local
+
+# Données d'exécution (base locale + secret de session de développement)
+data/db.json
+data/*.tmp
+data/.session-secret
+
+# Artefacts de compilation
+tsconfig.tsbuildinfo
+next-env.d.ts

@@ -1,0 +1,17 @@
+{
+  "name": "LOUTIGUI – Gestion Locative SaaS",
+  "short_name": "LOUTIGUI",
+  "description": "Système d'exploitation de gestion locative en Afrique francophone (Zone UEMOA).",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#064e3b",
+  "theme_color": "#059669",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
