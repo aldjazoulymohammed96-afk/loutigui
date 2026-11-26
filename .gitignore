@@ -12,6 +12,8 @@ build
 
 # Données d'exécution (base locale + secret de session de développement)
 data/db.json
+data/*.db
+data/*.db-*
 data/*.tmp
 data/.session-secret
 

@@ -7,14 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "db:import": "node scripts/import-json-to-postgres.mjs"
+    "db:import": "node scripts/import-json-to-turso.mjs"
   },
   "dependencies": {
+    "@libsql/client": "^0.18.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.475.0",
     "next": "^15.1.7",
-    "pg": "^8.23.1",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -24,7 +24,6 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.7",
     "@types/node": "^22.13.4",
-    "@types/pg": "^8.23.1",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",

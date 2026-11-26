@@ -5,6 +5,8 @@
 **Date :** 21 novembre 2026  
 **Auteur :** Architecture & Ingénierie Produit  
 
+> **Note d'implémentation (novembre 2026) :** ce TRD décrit l'architecture cible recommandée. L'implémentation livrée utilise **Next.js (API Routes) + Turso/libSQL** avec un document d'état transactionnel protégé par compare-and-swap (`src/lib/db-state.ts`), et non PostgreSQL/RLS. Les références PostgreSQL, NestJS et Redis ci-dessous sont des recommandations d'architecture, pas le choix technique retenu pour cette version. Voir `README.md` § 5 pour la configuration réelle.
+
 ---
 
 ## 1. Architecture Globale & Principes Techniques

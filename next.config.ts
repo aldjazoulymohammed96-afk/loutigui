@@ -20,9 +20,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   outputFileTracingRoot: path.join(__dirname),
-  // pg is a Node-only driver: keep it external so serverless bundles load it
-  // from node_modules instead of trying to bundle its dynamic dependencies.
-  serverExternalPackages: ["pg"],
+  // The libSQL client loads platform-specific bindings: keep it external so
+  // serverless bundles resolve them from node_modules at runtime.
+  serverExternalPackages: ["@libsql/client"],
   async headers() {
     return [
       {

@@ -19,7 +19,8 @@ Variables obligatoires et optionnelles : voir `.env.example`.
 
 | Variable | Rôle | Obligatoire |
 | --- | --- | --- |
-| `DATABASE_URL` | Base PostgreSQL persistante (Vercel / production) | **Oui en production** |
+| `TURSO_DATABASE_URL` | Base Turso/libSQL persistante (`libsql://…`) | **Oui en production** |
+| `TURSO_AUTH_TOKEN` | Token d'accès à la base Turso | **Oui en production** |
 | `SESSION_SECRET` | Signature HMAC du cookie de session (≥ 32 caractères aléatoires) | **Oui en production** |
 | `CRON_SECRET` | Protection du cron `/api/cron/reminders` | **Oui en production** |
 | `APP_URL` | URL publique utilisée dans les liens email / paiement | Recommandé |
@@ -84,54 +85,57 @@ Un fournisseur non configuré renvoie une erreur explicite et l'échec est journ
 
 ---
 
-## 5. Persistance PostgreSQL
+## 5. Persistance Turso (libSQL)
 
 ### Production (Vercel, serveur sans disque persistant)
 
-Définir `DATABASE_URL` dans les variables d'environnement. Exemples : Neon, Supabase, Railway ou PostgreSQL autohébergé.
+Définir `TURSO_DATABASE_URL` et `TURSO_AUTH_TOKEN` dans les variables d'environnement. Créez la base sur [turso.tech](https://turso.tech) ; l'URL ressemble à `libsql://ma-base-org.turso.io`.
 
-La table `loutigui_state` est créée automatiquement au premier accès. Chaque opération du store s'exécute dans **une transaction** :
+La table `loutigui_state` est créée automatiquement au premier accès. Chaque opération du store s'exécute de façon atomique :
 
-1. `SELECT … FOR UPDATE` verrouille la ligne d'état (plusieurs instances serverless ne peuvent pas écraser les données de l'autre) ;
+1. le document d'état et sa version sont lus depuis Turso ;
 2. la logique métier existante s'applique sur une copie isolée ;
-3. le document est écrit en `jsonb` et la transaction est validée, ou annulée en cas d'erreur.
+3. l'écriture utilise un **compare-and-swap** (`UPDATE … WHERE version = ?`) ; en cas de conflit, l'opération est rejouée sur la version la plus récente (8 tentatives maximum).
 
-Ainsi `recordPayment()` (échéance + paiement + quittance + séquence), `createLease()`, les relances et le journal d'audit restent atomiques. Aucun fichier n'est écrit sur le serveur : le déploiement Vercel est compatible. `SESSION_SECRET` et `CRON_SECRET` sont obligatoires en production.
+Plusieurs instances serverless ne peuvent donc pas écraser les données de l'autre, sans transaction interactive ni verrou de ligne. Ainsi `recordPayment()` (échéance + paiement + quittance + séquence), `createLease()`, les relances et le journal d'audit restent atomiques. Aucun fichier n'est écrit sur le serveur. `SESSION_SECRET` et `CRON_SECRET` sont obligatoires en production.
 
 ### Import des données locales
 
-Pour transférer un `data/db.json` existant vers PostgreSQL :
+Pour transférer un `data/db.json` existant vers Turso :
 
 ```bash
-DATABASE_URL="postgresql://…" npm run db:import
+TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" npm run db:import
 ```
 
 Le script applique un `UPSERT` de la base complète ; la migration des anciens formats et des mots de passe en clair s'applique ensuite automatiquement au premier accès. `data/db.json` et `data/.session-secret` restent exclus du dépôt.
 
 ### Développement local
 
-Sans `DATABASE_URL`, le même store utilise `data/db.json` avec écriture atomique (fichier temporaire + `rename`). Ce mode est réservé au poste de travail : le système de fichiers de Vercel est en lecture seule et éphémère.
+Sans `TURSO_DATABASE_URL`, le même store utilise `data/db.json` avec écriture atomique (fichier temporaire + `rename`). Ce mode est réservé au poste de travail : le système de fichiers de Vercel est en lecture seule et éphémère.
 
-> Le schéma relationnel normalisé (`organizations`, `users`, `leases`, `installments`, `receipts`, …) décrit dans les versions précédentes du README n'a pas été retenu : le document `jsonb` transactionnel conserve exactement les règles métier validées, avec verrouillage et isolation multi-tenant. Une normalisation ultérieure peut être faite sans changer les routes API, le store étant le seul point d'accès aux données.
+Pour tester le backend libSQL sans cloud : `TURSO_DATABASE_URL=file:data/loutigui.db npm run dev`. Aucun Docker n'est nécessaire.
+
+> Le schéma relationnel normalisé (`organizations`, `users`, `leases`, `installments`, `receipts`, …) décrit dans les versions précédentes du README n'a pas été retenu : le document transactionnel conserve exactement les règles métier validées, avec contrôle de concurrence et isolation multi-tenant. Une normalisation ultérieure peut être faite sans changer les routes API, le store étant le seul point d'accès aux données.
 
 ### Déploiement Vercel
 
-1. Créer une base PostgreSQL (Neon, Supabase, Railway) et copier sa chaîne de connexion.
+1. Créer une base Turso et récupérer son URL (`libsql://…`) et son token.
 2. Dans **Vercel → Project → Settings → Environment Variables**, définir au minimum :
 
    ```text
-   DATABASE_URL=postgresql://…
+   TURSO_DATABASE_URL=libsql://…
+   TURSO_AUTH_TOKEN=<token Turso>
    SESSION_SECRET=<secret aléatoire ≥ 32 caractères>
    CRON_SECRET=<secret aléatoire>
    NEXT_PUBLIC_SITE_URL=https://<votre-domaine>
    APP_URL=https://<votre-domaine>
    ```
 
-3. Si vous migrez depuis une installation locale : `DATABASE_URL="postgresql://…" npm run db:import`.
+3. Si vous migrez depuis une installation locale : `TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" npm run db:import`.
 4. Redéployer. La table `loutigui_state` est créée automatiquement au premier accès.
 5. Ajouter les variables des fournisseurs réels (Twilio/Brevo/SendGrid, passerelle Mobile Money, SasPay) uniquement si les services sont activés.
 
-Aucune écriture sur le système de fichiers n'est nécessaire en production.
+Aucune écriture sur le système de fichiers n'est nécessaire en production. Une URL `DATABASE_URL` PostgreSQL est refusée explicitement.
 
 ---
 
@@ -151,7 +155,7 @@ Les limites sont contrôlées côté serveur (`src/lib/plans.ts`) à la créatio
 
 ```
 src/lib/data-store.ts        logique métier multi-tenant, migration, CRUD
-src/lib/db-state.ts          backend PostgreSQL transactionnel / repli JSON local
+src/lib/db-state.ts          backend Turso/libSQL avec CAS / repli JSON local
 src/lib/db-types.ts          contrat de sérialisation de l'état
 src/lib/auth.ts              sessions, rôles, sanitization, erreurs API
 src/lib/session.ts           cookie signé

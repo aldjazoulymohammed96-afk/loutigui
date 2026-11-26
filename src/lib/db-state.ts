@@ -1,23 +1,25 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import fs from "fs";
 import path from "path";
-import type { Pool } from "pg";
+import type { Client } from "@libsql/client";
 import type { DatabaseSchema } from "@/lib/db-types";
 
 /**
  * Transactional state backend.
  *
- * Production uses PostgreSQL: every operation runs in a transaction that
- * locks the state row (`SELECT … FOR UPDATE`), runs the existing business
- * logic synchronously on a private copy, then commits the new document. This
- * gives durability, atomicity and correct behaviour with several serverless
- * instances, without any writable filesystem.
+ * Production uses Turso (libSQL): every operation reads the state document,
+ * runs the existing synchronous business logic on a private copy, then writes
+ * it back with a compare-and-swap on a version column. If another serverless
+ * instance committed in between, the operation is retried on a fresh snapshot.
+ * This gives durability and safe concurrent writes without a writable
+ * filesystem or an interactive transaction (works over Turso's HTTP API).
  *
- * When DATABASE_URL is absent (local development only) the same operation is
- * applied to data/db.json with an atomic temp-file + rename write.
+ * When no Turso URL is configured (local development only), the same operation
+ * is applied to data/db.json with an atomic temp-file + rename write.
  */
 
 const STATE_ID = "main";
+const MAX_CAS_ATTEMPTS = 8;
 const DB_DIR = path.join(process.cwd(), "data");
 const DB_FILE = path.join(DB_DIR, "db.json");
 
@@ -33,8 +35,23 @@ interface StateContext {
 
 const stateContext = new AsyncLocalStorage<StateContext>();
 
-export function usesPostgres(): boolean {
-  return Boolean(process.env.DATABASE_URL?.trim());
+/** Turso URL, with a backwards-compatible alias for libSQL URLs. */
+function databaseUrl(): string | undefined {
+  const primary = process.env.TURSO_DATABASE_URL?.trim();
+  if (primary) return primary;
+
+  const legacy = process.env.DATABASE_URL?.trim();
+  if (!legacy) return undefined;
+  if (/^postgres(ql)?:\/\//i.test(legacy)) {
+    throw new Error(
+      "DATABASE_URL pointe vers PostgreSQL. Utilisez TURSO_DATABASE_URL avec une URL libSQL (libsql://…)."
+    );
+  }
+  return legacy;
+}
+
+export function usesTurso(): boolean {
+  return Boolean(databaseUrl());
 }
 
 export function emptyDatabase(): DatabaseSchema {
@@ -70,90 +87,82 @@ export function markDirty(): void {
   if (ctx) ctx.dirty = true;
 }
 
-let poolPromise: Promise<Pool> | null = null;
+let clientPromise: Promise<Client> | null = null;
 
-async function getPool(): Promise<Pool> {
-  if (poolPromise) return poolPromise;
+async function getClient(): Promise<Client> {
+  if (clientPromise) return clientPromise;
 
-  poolPromise = (async () => {
-    const connectionString = process.env.DATABASE_URL?.trim();
-    if (!connectionString) {
-      throw new Error("DATABASE_URL n'est pas configuré.");
-    }
+  clientPromise = (async () => {
+    const url = databaseUrl();
+    if (!url) throw new Error("TURSO_DATABASE_URL n'est pas configuré.");
 
-    const { Pool } = await import("pg");
-    const url = new URL(connectionString);
-    const sslMode = url.searchParams.get("sslmode");
-    const ssl =
-      sslMode && sslMode !== "disable"
-        ? { rejectUnauthorized: process.env.PGSSL_REJECT_UNAUTHORIZED !== "false" }
-        : undefined;
-
-    const pool = new Pool({
-      connectionString,
-      ssl,
-      max: Number(process.env.DB_POOL_MAX || 10),
-      connectionTimeoutMillis: 10_000,
+    const { createClient } = await import("@libsql/client");
+    const client = createClient({
+      url,
+      authToken: process.env.TURSO_AUTH_TOKEN?.trim() || undefined,
     });
 
-    await ensureSchema(pool);
-    return pool;
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS loutigui_state (
+        id TEXT PRIMARY KEY,
+        data TEXT NOT NULL,
+        version INTEGER NOT NULL DEFAULT 0
+      )
+    `);
+    await client.execute({
+      sql: `INSERT OR IGNORE INTO loutigui_state (id, data, version) VALUES (?, ?, 0)`,
+      args: [STATE_ID, JSON.stringify(emptyDatabase())],
+    });
+
+    return client;
   })().catch((error) => {
-    poolPromise = null;
+    clientPromise = null;
     throw error;
   });
 
-  return poolPromise;
+  return clientPromise;
 }
 
-async function ensureSchema(pool: Pool): Promise<void> {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS loutigui_state (
-      id text PRIMARY KEY,
-      data jsonb NOT NULL,
-      updated_at timestamptz NOT NULL DEFAULT now()
-    )
-  `);
-  await pool.query(
-    `INSERT INTO loutigui_state (id, data)
-     VALUES ($1, $2::jsonb)
-     ON CONFLICT (id) DO NOTHING`,
-    [STATE_ID, JSON.stringify(emptyDatabase())]
-  );
-}
-
-async function withPostgres<T>(
+async function withTurso<T>(
   normalize: (raw: unknown) => NormalizeResult,
   work: () => T
 ): Promise<T> {
-  const pool = await getPool();
-  const client = await pool.connect();
+  const client = await getClient();
 
-  try {
-    await client.query("BEGIN");
-    const result = await client.query<{ data: DatabaseSchema }>(
-      "SELECT data FROM loutigui_state WHERE id = $1 FOR UPDATE",
-      [STATE_ID]
-    );
+  for (let attempt = 1; attempt <= MAX_CAS_ATTEMPTS; attempt++) {
+    const result = await client.execute({
+      sql: "SELECT data, version FROM loutigui_state WHERE id = ?",
+      args: [STATE_ID],
+    });
 
-    const normalized = normalize(result.rows[0]?.data ?? null);
+    const row = result.rows[0];
+    const raw = row ? JSON.parse(String(row.data)) : null;
+    const version = row ? Number(row.version) : 0;
+
+    const normalized = normalize(raw);
     const ctx: StateContext = { db: normalized.db, dirty: normalized.changed };
     const value = stateContext.run(ctx, work);
 
-    if (ctx.dirty) {
-      await client.query(
-        "UPDATE loutigui_state SET data = $1::jsonb, updated_at = now() WHERE id = $2",
-        [JSON.stringify(ctx.db), STATE_ID]
+    if (!ctx.dirty) return value;
+
+    const update = await client.execute({
+      sql: `UPDATE loutigui_state
+            SET data = ?, version = version + 1
+            WHERE id = ? AND version = ?`,
+      args: [JSON.stringify(ctx.db), STATE_ID, version],
+    });
+
+    if (update.rowsAffected === 1) return value;
+
+    // Another instance committed first: recompute from the newest snapshot.
+    if (attempt === MAX_CAS_ATTEMPTS) {
+      throw new Error(
+        "Concurrence trop élevée sur la base Turso. Réessayez dans un instant."
       );
     }
-    await client.query("COMMIT");
-    return value;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
   }
+
+  throw new Error("Opération de stockage impossible.");
 }
 
 function readJsonFile(): unknown {
@@ -191,11 +200,11 @@ export async function withState<T>(
   normalize: (raw: unknown) => NormalizeResult,
   work: () => T
 ): Promise<T> {
-  if (usesPostgres()) return withPostgres(normalize, work);
+  if (usesTurso()) return withTurso(normalize, work);
 
   if (process.env.NODE_ENV === "production") {
     throw new Error(
-      "DATABASE_URL est obligatoire en production : le système de fichiers des serveurs sans état n'est pas persistent."
+      "TURSO_DATABASE_URL est obligatoire en production : le système de fichiers des serveurs sans état n'est pas persistent."
     );
   }
 
