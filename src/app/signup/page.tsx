@@ -4,12 +4,18 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { AuthThemeToggle } from "@/components/AuthThemeToggle";
 import { UserRole } from "@/types";
 import {
   Building2,
   ArrowRight,
   AlertCircle,
 } from "lucide-react";
+
+const inputClass =
+  "w-full rounded-xl border border-[var(--lp-border)] bg-[var(--lp-bg-inset)] px-3.5 py-2.5 text-[var(--lp-text)] placeholder:text-[var(--lp-text-subtle)] focus:outline-none focus:ring-2 focus:ring-emerald-500";
+
+const labelClass = "mb-1 block font-bold text-[var(--lp-text)]";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -41,7 +47,6 @@ export default function SignupPage() {
       });
 
       if (result.ok) {
-        // Redirect to configuration onboarding questionnaire
         router.push("/onboarding");
       } else {
         setError(result.error || "Une erreur est survenue lors de l'inscription.");
@@ -53,79 +58,102 @@ export default function SignupPage() {
     }
   };
 
+  const profileButton = (
+    value: "OWNER" | "DIASPORA" | "AGENCY",
+    nextRole: UserRole,
+    title: string,
+    subtitle: string
+  ) => {
+    const active = profile === value;
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setProfile(value);
+          setRole(nextRole);
+        }}
+        className={`rounded-xl border p-2.5 text-center transition ${
+          active
+            ? "border-[var(--lp-accent-solid)] bg-[var(--lp-accent-soft)] font-bold text-[var(--lp-accent-text)]"
+            : "border-[var(--lp-border)] text-[var(--lp-text-muted)] hover:bg-[var(--lp-hover-bg)]"
+        }`}
+      >
+        <p className="text-xs font-bold">{title}</p>
+        <p className="text-[10px] text-[var(--lp-text-subtle)]">{subtitle}</p>
+      </button>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4">
-      <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+    <div className="auth-page relative flex min-h-screen flex-col items-center justify-center bg-[var(--lp-bg)] p-4 text-[var(--lp-text)]">
+      <AuthThemeToggle />
+      <div className="w-full max-w-lg space-y-6 rounded-3xl border border-[var(--lp-border)] bg-[var(--lp-bg-elevated)] p-6 shadow-[var(--lp-window-shadow)] sm:p-8">
         {/* Brand */}
-        <div className="text-center space-y-1">
-          <Link href="/" className="inline-flex items-center gap-2 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-md">
-              <Building2 className="w-5 h-5" />
+        <div className="space-y-1 text-center">
+          <Link href="/" className="mb-2 inline-flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-md">
+              <Building2 className="h-5 w-5" />
             </div>
-            <span className="font-extrabold text-2xl tracking-tight text-white">LOUTIGUI</span>
+            <span className="text-2xl font-extrabold tracking-tight text-[var(--lp-text)]">
+              LOUTIGUI
+            </span>
           </Link>
-          <h1 className="text-xl font-bold text-white">Créer votre Compte Gratuit</h1>
-          <p className="text-xs text-slate-400">
+          <h1 className="text-xl font-bold text-[var(--lp-text)]">
+            Créer votre Compte Gratuit
+          </h1>
+          <p className="text-xs text-[var(--lp-text-muted)]">
             Rejoignez les meilleurs gestionnaires et propriétaires d&apos;Afrique
           </p>
         </div>
 
         {error && (
-          <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-800 flex items-start gap-2.5 text-rose-200 text-xs">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2.5 rounded-xl border border-[var(--lp-error-border)] bg-[var(--lp-error-bg)] p-3.5 text-xs text-[var(--lp-error-text)]">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
-            <label className="font-bold text-slate-300 block mb-1">
-              Nom et Prénom ou Raison Sociale
-            </label>
+            <label className={labelClass}>Nom et Prénom ou Raison Sociale</label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ex: Kouamé Konan ou Cabinet Immo Horizon"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-950 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className={inputClass}
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="font-bold text-slate-300 block mb-1">
-                Numéro WhatsApp (avec indicatif)
-              </label>
+              <label className={labelClass}>Numéro WhatsApp (avec indicatif)</label>
               <input
                 type="text"
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+2250700000000"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-950 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="font-bold text-slate-300 block mb-1">
-                Email
-              </label>
+              <label className={labelClass}>Email</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="contact@domaine.ci"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-950 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className={inputClass}
               />
             </div>
           </div>
 
           <div>
-            <label className="font-bold text-slate-300 block mb-1">
-              Mot de passe
-            </label>
+            <label className={labelClass}>Mot de passe</label>
             <input
               type="password"
               required
@@ -133,81 +161,38 @@ export default function SignupPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="8 caractères minimum, avec chiffre"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-950 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className={inputClass}
             />
           </div>
 
           {/* Profile Role Selector */}
           <div>
-            <label className="font-bold text-slate-300 block mb-1.5">
+            <label className="mb-1.5 block font-bold text-[var(--lp-text)]">
               Votre Profil de Gestion
             </label>
             <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setProfile("OWNER");
-                  setRole("OWNER");
-                }}
-                className={`p-2.5 rounded-xl border text-center transition ${
-                  profile === "OWNER"
-                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 font-bold"
-                    : "border-slate-800 text-slate-400 hover:bg-slate-800"
-                }`}
-              >
-                <p className="font-bold text-xs">Propriétaire</p>
-                <p className="text-[10px] text-slate-400">Gère en direct</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setProfile("DIASPORA");
-                  setRole("OWNER");
-                }}
-                className={`p-2.5 rounded-xl border text-center transition ${
-                  profile === "DIASPORA"
-                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 font-bold"
-                    : "border-slate-800 text-slate-400 hover:bg-slate-800"
-                }`}
-              >
-                <p className="font-bold text-xs">Diaspora</p>
-                <p className="text-[10px] text-slate-400">À l&apos;étranger</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setProfile("AGENCY");
-                  setRole("AGENCY_ADMIN");
-                }}
-                className={`p-2.5 rounded-xl border text-center transition ${
-                  profile === "AGENCY"
-                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 font-bold"
-                    : "border-slate-800 text-slate-400 hover:bg-slate-800"
-                }`}
-              >
-                <p className="font-bold text-xs">Agence</p>
-                <p className="text-[10px] text-slate-400">Gestion de tiers</p>
-              </button>
+              {profileButton("OWNER", "OWNER", "Propriétaire", "Gère en direct")}
+              {profileButton("DIASPORA", "OWNER", "Diaspora", "À l'étranger")}
+              {profileButton("AGENCY", "AGENCY_ADMIN", "Agence", "Gestion de tiers")}
             </div>
           </div>
 
           {/* Clean App Option */}
-          <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-            <label className="flex items-start gap-2.5 cursor-pointer">
+          <div className="space-y-1 rounded-xl border border-[var(--lp-border)] bg-[var(--lp-bg-inset)] p-3">
+            <label className="flex cursor-pointer items-start gap-2.5">
               <input
                 type="checkbox"
                 checked={startEmpty}
                 onChange={(e) => setStartEmpty(e.target.checked)}
-                className="w-4 h-4 mt-0.5 text-emerald-500 rounded focus:ring-emerald-500"
+                className="mt-0.5 h-4 w-4 rounded text-emerald-500 focus:ring-emerald-500"
               />
               <div>
-                <p className="font-bold text-white text-xs">
+                <p className="text-xs font-bold text-[var(--lp-text)]">
                   Commencer avec une application 100% vierge
                 </p>
-                <p className="text-[11px] text-slate-400 leading-tight">
-                  Aucune donnée factice. Vous remplirez vos biens et locataires manuellement et progressivement.
+                <p className="text-[11px] leading-tight text-[var(--lp-text-muted)]">
+                  Aucune donnée factice. Vous remplirez vos biens et locataires manuellement et
+                  progressivement.
                 </p>
               </div>
             </label>
@@ -216,22 +201,25 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-xl shadow-emerald-500/25 transition active:scale-95"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--lp-accent-gradient)] py-3.5 text-sm font-extrabold text-[var(--lp-accent-on)] shadow-[var(--lp-accent-shadow)] transition hover:opacity-90 active:scale-95 disabled:opacity-60"
           >
             {isLoading ? (
               <span>Création du compte...</span>
             ) : (
               <>
-                <span>Créer mon Compte & Configurer</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>Créer mon Compte &amp; Configurer</span>
+                <ArrowRight className="h-4 w-4" />
               </>
             )}
           </button>
         </form>
 
-        <p className="text-center text-xs text-slate-400">
+        <p className="text-center text-xs text-[var(--lp-text-muted)]">
           Vous avez déjà un compte ?{" "}
-          <Link href="/login" className="text-emerald-400 hover:underline font-bold">
+          <Link
+            href="/login"
+            className="font-bold text-[var(--lp-accent-text)] hover:underline"
+          >
             Se connecter
           </Link>
         </p>

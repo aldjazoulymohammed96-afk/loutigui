@@ -3,6 +3,7 @@
 import React, { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AuthThemeToggle } from "@/components/AuthThemeToggle";
 import { Building2, Lock, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
 
 function ResetPasswordForm() {
@@ -44,41 +45,51 @@ function ResetPasswordForm() {
     }
   };
 
+  const inputClass =
+    "w-full rounded-xl border border-[var(--lp-border)] bg-[var(--lp-bg-inset)] py-3 pl-10 pr-4 text-[var(--lp-text)] placeholder:text-[var(--lp-text-subtle)] focus:outline-none focus:ring-2 focus:ring-emerald-500";
+
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
-        <div className="text-center space-y-1">
-          <Link href="/" className="inline-flex items-center gap-2 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-md">
-              <Building2 className="w-5 h-5" />
-            </div>
-            <span className="font-extrabold text-2xl tracking-tight text-white">LOUTIGUI</span>
+    <div className="auth-page relative flex min-h-screen flex-col items-center justify-center bg-[var(--lp-bg)] p-4 text-[var(--lp-text)]">
+      <AuthThemeToggle />
+      <div className="w-full max-w-md space-y-6 rounded-3xl border border-[var(--lp-border)] bg-[var(--lp-bg-elevated)] p-6 shadow-[var(--lp-window-shadow)] sm:p-8">
+        <div className="space-y-1 text-center">
+          <Link href="/" className="mb-2 inline-flex items-center gap-2">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-md">
+              <Building2 className="h-5 w-5" />
+            </span>
+            <span className="text-2xl font-extrabold tracking-tight text-[var(--lp-text)]">
+              LOUTIGUI
+            </span>
           </Link>
-          <h1 className="text-xl font-bold text-white">Nouveau mot de passe</h1>
-          <p className="text-xs text-slate-400">8 caractères minimum, avec au moins une lettre et un chiffre.</p>
+          <h1 className="text-xl font-bold text-[var(--lp-text)]">Nouveau mot de passe</h1>
+          <p className="text-xs text-[var(--lp-text-muted)]">
+            8 caractères minimum, avec au moins une lettre et un chiffre.
+          </p>
         </div>
 
-        {!token && (
-          <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-200 text-xs">
+        {!token ? (
+          <div className="rounded-xl border border-[var(--lp-error-border)] bg-[var(--lp-error-bg)] p-3.5 text-xs text-[var(--lp-error-text)]">
             Lien invalide : aucun jeton de réinitialisation n&apos;a été fourni.
           </div>
-        )}
-        {error && (
-          <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-800 flex items-start gap-2.5 text-rose-200 text-xs">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+        ) : null}
+        {error ? (
+          <div className="flex items-start gap-2.5 rounded-xl border border-[var(--lp-error-border)] bg-[var(--lp-error-bg)] p-3.5 text-xs text-[var(--lp-error-text)]">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
-        )}
-        {success && (
-          <div className="p-3.5 rounded-xl bg-emerald-950/60 border border-emerald-800 flex items-start gap-2.5 text-emerald-200 text-xs">
-            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+        ) : null}
+        {success ? (
+          <div className="flex items-start gap-2.5 rounded-xl border border-[var(--lp-success-border)] bg-[var(--lp-success-bg)] p-3.5 text-xs text-[var(--lp-success-text)]">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
             <span>Mot de passe mis à jour. Redirection vers la connexion…</span>
           </div>
-        )}
+        ) : null}
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
-            <label className="font-bold text-slate-300 block mb-1">Nouveau mot de passe</label>
+            <label className="mb-1 block font-bold text-[var(--lp-text)]">
+              Nouveau mot de passe
+            </label>
             <div className="relative">
               <input
                 type="password"
@@ -86,13 +97,13 @@ function ResetPasswordForm() {
                 minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-800 bg-slate-950 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className={inputClass}
               />
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--lp-text-subtle)]" />
             </div>
           </div>
           <div>
-            <label className="font-bold text-slate-300 block mb-1">Confirmation</label>
+            <label className="mb-1 block font-bold text-[var(--lp-text)]">Confirmation</label>
             <div className="relative">
               <input
                 type="password"
@@ -100,24 +111,27 @@ function ResetPasswordForm() {
                 minLength={8}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-800 bg-slate-950 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className={inputClass}
               />
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--lp-text-subtle)]" />
             </div>
           </div>
 
           <button
             type="submit"
             disabled={isLoading || !token || success}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-sm shadow-lg shadow-emerald-500/20 transition active:scale-95 disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--lp-accent-solid)] py-3.5 text-sm font-extrabold text-[var(--lp-accent-on)] shadow-[var(--lp-accent-shadow)] transition hover:bg-[var(--lp-accent-solid-hover)] active:scale-95 disabled:opacity-60"
           >
             {isLoading ? "Mise à jour..." : "Définir le mot de passe"}
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="h-4 w-4" />
           </button>
         </form>
 
-        <p className="text-center text-xs text-slate-400">
-          <Link href="/login" className="text-emerald-400 hover:underline font-bold">
+        <p className="text-center text-xs text-[var(--lp-text-muted)]">
+          <Link
+            href="/login"
+            className="font-bold text-[var(--lp-accent-text)] hover:underline"
+          >
             Retour à la connexion
           </Link>
         </p>
@@ -130,11 +144,12 @@ export default function ResetPasswordPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-          <div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+        <div className="auth-page flex min-h-screen items-center justify-center bg-[var(--lp-bg)]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
         </div>
       }
     >
+      <AuthThemeToggle />
       <ResetPasswordForm />
     </Suspense>
   );
