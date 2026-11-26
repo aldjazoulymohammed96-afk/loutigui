@@ -11,9 +11,9 @@ export async function DELETE(
   try {
     const { user, organization } = await requireAuth();
     const { id } = await params;
-    dataStore.deleteTicket(organization.id, id);
+    await dataStore.deleteTicket(organization.id, id);
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,

@@ -12,8 +12,8 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: {
-        buildings: dataStore.getBuildings(organization.id),
-        units: dataStore.getUnits(organization.id),
+        buildings: await dataStore.getBuildings(organization.id),
+        units: await dataStore.getUnits(organization.id),
       },
     });
   } catch (error) {
@@ -39,8 +39,8 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      const building = dataStore.createBuilding(organization.id, parsed.data);
-      dataStore.audit({
+      const building = await dataStore.createBuilding(organization.id, parsed.data);
+      await dataStore.audit({
         organizationId: organization.id,
         userId: user.id,
         userEmail: user.email,
@@ -60,8 +60,8 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      const unit = dataStore.createUnit(organization.id, parsed.data);
-      dataStore.audit({
+      const unit = await dataStore.createUnit(organization.id, parsed.data);
+      await dataStore.audit({
         organizationId: organization.id,
         userId: user.id,
         userEmail: user.email,

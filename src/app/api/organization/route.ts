@@ -48,9 +48,9 @@ export async function PATCH(request: NextRequest) {
       updates.settings = { ...organization.settings, ...settings };
     }
 
-    const updated = dataStore.updateOrganization(organization.id, updates);
+    const updated = await dataStore.updateOrganization(organization.id, updates);
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,

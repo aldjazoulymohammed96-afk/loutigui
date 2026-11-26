@@ -8,7 +8,7 @@ export const revalidate = 0;
 export async function GET() {
   try {
     const { organization } = await requireAuth();
-    const subscription = dataStore.getSubscriptionInfo(organization.id);
+    const subscription = await dataStore.getSubscriptionInfo(organization.id);
 
     return NextResponse.json({
       success: true,

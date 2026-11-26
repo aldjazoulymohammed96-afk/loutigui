@@ -20,7 +20,7 @@ export async function GET(
     }
 
     const { hash } = await params;
-    const receipt = dataStore.getReceiptByHash(hash);
+    const receipt = await dataStore.getReceiptByHash(hash);
     if (!receipt) {
       return NextResponse.json(
         { success: false, error: "Document non certifié ou introuvable." },

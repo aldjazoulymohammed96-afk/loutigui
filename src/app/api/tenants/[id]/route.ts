@@ -21,14 +21,14 @@ export async function PATCH(
       );
     }
 
-    const tenant = dataStore.updateTenant(organization.id, id, {
+    const tenant = await dataStore.updateTenant(organization.id, id, {
       ...parsed.data,
       email: parsed.data.email === "" ? undefined : parsed.data.email,
       emergencyContactPhone: parsed.data.emergencyContactPhone === "" ? undefined : parsed.data.emergencyContactPhone,
       guarantorPhone: parsed.data.guarantorPhone === "" ? undefined : parsed.data.guarantorPhone,
     });
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,
@@ -51,9 +51,9 @@ export async function DELETE(
   try {
     const { user, organization } = await requireAuth();
     const { id } = await params;
-    dataStore.deleteTenant(organization.id, id);
+    await dataStore.deleteTenant(organization.id, id);
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,

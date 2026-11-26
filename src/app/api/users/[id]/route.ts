@@ -36,14 +36,14 @@ export async function PATCH(
       );
     }
 
-    const updated = dataStore.updateUser(organization.id, id, {
+    const updated = await dataStore.updateUser(organization.id, id, {
       name: parsed.data.name,
       phone: parsed.data.phone,
       email: parsed.data.email === "" ? undefined : parsed.data.email,
       avatarUrl: parsed.data.avatarUrl,
     });
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,
@@ -69,9 +69,9 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: "Accès réservé aux administrateurs." }, { status: 403 });
     }
     const { id } = await params;
-    dataStore.deleteUser(organization.id, id);
+    await dataStore.deleteUser(organization.id, id);
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,

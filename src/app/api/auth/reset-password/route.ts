@@ -33,12 +33,12 @@ export async function POST(request: NextRequest) {
 
     let user;
     try {
-      user = dataStore.resetPasswordWithToken(parsed.data.token, parsed.data.newPassword);
+      user = await dataStore.resetPasswordWithToken(parsed.data.token, parsed.data.newPassword);
     } catch (e) {
       throw new ApiError(400, e instanceof Error ? e.message : "Lien invalide.");
     }
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: user.organizationId,
       userId: user.id,
       userEmail: user.email,

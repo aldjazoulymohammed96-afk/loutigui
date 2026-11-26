@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const session = dataStore.login(parsed.data.identifier, parsed.data.password);
+    const session = await dataStore.login(parsed.data.identifier, parsed.data.password);
     if (!session) {
       return NextResponse.json(
         { success: false, error: "Identifiant ou mot de passe incorrect." },
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: session.organization.id,
       userId: session.user.id,
       userEmail: session.user.email,

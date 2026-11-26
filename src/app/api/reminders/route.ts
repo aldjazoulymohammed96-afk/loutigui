@@ -10,7 +10,7 @@ export const revalidate = 0;
 export async function GET() {
   try {
     const { organization } = await requireAuth();
-    return NextResponse.json({ success: true, data: dataStore.getReminders(organization.id) });
+    return NextResponse.json({ success: true, data: await dataStore.getReminders(organization.id) });
   } catch (error) {
     return errorResponse(error);
   }
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       appUrl: process.env.APP_URL || new URL(request.url).origin,
     });
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,

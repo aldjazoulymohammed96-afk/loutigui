@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const org = dataStore.completeOnboarding(organization.id, parsed.data);
+    const org = await dataStore.completeOnboarding(organization.id, parsed.data);
     return NextResponse.json({ success: true, data: org });
   } catch (error) {
     return errorResponse(error);

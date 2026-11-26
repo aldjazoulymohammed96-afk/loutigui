@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const installment = dataStore.getInstallment(organization.id, parsed.data.installmentId);
+    const installment = await dataStore.getInstallment(organization.id, parsed.data.installmentId);
     if (!installment) {
       return NextResponse.json({ success: false, error: "Échéance introuvable." }, { status: 404 });
     }

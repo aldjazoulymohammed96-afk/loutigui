@@ -19,6 +19,7 @@ Variables obligatoires et optionnelles : voir `.env.example`.
 
 | Variable | Rôle | Obligatoire |
 | --- | --- | --- |
+| `DATABASE_URL` | Base PostgreSQL persistante (Vercel / production) | **Oui en production** |
 | `SESSION_SECRET` | Signature HMAC du cookie de session (≥ 32 caractères aléatoires) | **Oui en production** |
 | `CRON_SECRET` | Protection du cron `/api/cron/reminders` | **Oui en production** |
 | `APP_URL` | URL publique utilisée dans les liens email / paiement | Recommandé |
@@ -83,20 +84,54 @@ Un fournisseur non configuré renvoie une erreur explicite et l'échec est journ
 
 ---
 
-## 5. Stockage et migration PostgreSQL
+## 5. Persistance PostgreSQL
 
-La persistance actuelle utilise un stockage JSON multi-tenant atomique (`data/db.json` : écriture temporaire + `rename`, verrou en mémoire, détection des changements externes). Ce choix permet un déploiement sans base de données. `data/db.json` et `data/.session-secret` sont exclus du dépôt.
+### Production (Vercel, serveur sans disque persistant)
 
-Pour passer à PostgreSQL en production, le contrat à respecter est défini par `DatabaseSchema` dans `src/lib/data-store.ts` :
+Définir `DATABASE_URL` dans les variables d'environnement. Exemples : Neon, Supabase, Railway ou PostgreSQL autohébergé.
 
-- tables `organizations`, `users`, `buildings`, `units`, `tenants`, `leases`, `installments`, `payments`, `receipts`, `tickets`, `reminders`, `audit_logs`, `password_resets` ;
-- `organization_id` sur **toutes** les tables métier, avec index composite `(organization_id, …)` ;
-- `users.password_hash` (jamais de mot de passe en clair) ;
-- `receipts.verification_hash` unique, `numéro de quittance` unique par organisation (`organization.receipt_seq`) ;
-- `payments.external_transaction_ref` unique pour l'idempotence des webhooks ;
-- transactions autour de `recordPayment()` (échéance + paiement + quittance + séquence) et de `createLease()`.
+La table `loutigui_state` est créée automatiquement au premier accès. Chaque opération du store s'exécute dans **une transaction** :
 
-Les getters de `dataStore` sont déjà isolés par `organizationId` : le remplacement du backend peut se faire sans modifier les routes API.
+1. `SELECT … FOR UPDATE` verrouille la ligne d'état (plusieurs instances serverless ne peuvent pas écraser les données de l'autre) ;
+2. la logique métier existante s'applique sur une copie isolée ;
+3. le document est écrit en `jsonb` et la transaction est validée, ou annulée en cas d'erreur.
+
+Ainsi `recordPayment()` (échéance + paiement + quittance + séquence), `createLease()`, les relances et le journal d'audit restent atomiques. Aucun fichier n'est écrit sur le serveur : le déploiement Vercel est compatible. `SESSION_SECRET` et `CRON_SECRET` sont obligatoires en production.
+
+### Import des données locales
+
+Pour transférer un `data/db.json` existant vers PostgreSQL :
+
+```bash
+DATABASE_URL="postgresql://…" npm run db:import
+```
+
+Le script applique un `UPSERT` de la base complète ; la migration des anciens formats et des mots de passe en clair s'applique ensuite automatiquement au premier accès. `data/db.json` et `data/.session-secret` restent exclus du dépôt.
+
+### Développement local
+
+Sans `DATABASE_URL`, le même store utilise `data/db.json` avec écriture atomique (fichier temporaire + `rename`). Ce mode est réservé au poste de travail : le système de fichiers de Vercel est en lecture seule et éphémère.
+
+> Le schéma relationnel normalisé (`organizations`, `users`, `leases`, `installments`, `receipts`, …) décrit dans les versions précédentes du README n'a pas été retenu : le document `jsonb` transactionnel conserve exactement les règles métier validées, avec verrouillage et isolation multi-tenant. Une normalisation ultérieure peut être faite sans changer les routes API, le store étant le seul point d'accès aux données.
+
+### Déploiement Vercel
+
+1. Créer une base PostgreSQL (Neon, Supabase, Railway) et copier sa chaîne de connexion.
+2. Dans **Vercel → Project → Settings → Environment Variables**, définir au minimum :
+
+   ```text
+   DATABASE_URL=postgresql://…
+   SESSION_SECRET=<secret aléatoire ≥ 32 caractères>
+   CRON_SECRET=<secret aléatoire>
+   NEXT_PUBLIC_SITE_URL=https://<votre-domaine>
+   APP_URL=https://<votre-domaine>
+   ```
+
+3. Si vous migrez depuis une installation locale : `DATABASE_URL="postgresql://…" npm run db:import`.
+4. Redéployer. La table `loutigui_state` est créée automatiquement au premier accès.
+5. Ajouter les variables des fournisseurs réels (Twilio/Brevo/SendGrid, passerelle Mobile Money, SasPay) uniquement si les services sont activés.
+
+Aucune écriture sur le système de fichiers n'est nécessaire en production.
 
 ---
 
@@ -115,7 +150,9 @@ Les limites sont contrôlées côté serveur (`src/lib/plans.ts`) à la créatio
 ## 7. Structure utile
 
 ```
-src/lib/data-store.ts        persistance multi-tenant, migration, métier
+src/lib/data-store.ts        logique métier multi-tenant, migration, CRUD
+src/lib/db-state.ts          backend PostgreSQL transactionnel / repli JSON local
+src/lib/db-types.ts          contrat de sérialisation de l'état
 src/lib/auth.ts              sessions, rôles, sanitization, erreurs API
 src/lib/session.ts           cookie signé
 src/lib/password.ts          scrypt + politique mot de passe

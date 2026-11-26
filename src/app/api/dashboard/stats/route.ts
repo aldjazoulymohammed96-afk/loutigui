@@ -13,10 +13,10 @@ export async function GET(request: NextRequest) {
 
     // Keep billing data current even if the cron has not run yet.
     const now = new Date();
-    dataStore.generateMonthlyInstallments(organization.id, now.getFullYear(), now.getMonth() + 1);
-    dataStore.refreshInstallmentStatuses(organization.id);
+    await dataStore.generateMonthlyInstallments(organization.id, now.getFullYear(), now.getMonth() + 1);
+    await dataStore.refreshInstallmentStatuses(organization.id);
 
-    const stats = dataStore.getDashboardStats(organization.id, currency);
+    const stats = await dataStore.getDashboardStats(organization.id, currency);
     return NextResponse.json({ success: true, data: stats });
   } catch (error) {
     return errorResponse(error);

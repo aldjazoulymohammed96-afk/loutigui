@@ -9,7 +9,7 @@ export const revalidate = 0;
 export async function GET() {
   try {
     const { organization } = await requireAuth();
-    return NextResponse.json({ success: true, data: dataStore.getLeases(organization.id) });
+    return NextResponse.json({ success: true, data: await dataStore.getLeases(organization.id) });
   } catch (error) {
     return errorResponse(error);
   }
@@ -27,12 +27,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const lease = dataStore.createLease(organization.id, {
+    const lease = await dataStore.createLease(organization.id, {
       ...parsed.data,
       endDate: parsed.data.endDate || undefined,
     });
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,

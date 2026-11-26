@@ -30,13 +30,12 @@ function sequenceForDueDate(dueDate: string, leadDays: number): ReminderSequence
 
 /** Real daily summary sent to the organisation's own mailbox. */
 async function sendDailyDigest(org: Organization, appUrl: string): Promise<string> {
-  const installments = dataStore.getInstallments(org.id, "ALL");
+  const installments = await dataStore.getInstallments(org.id, "ALL");
   const overdue = installments.filter(
     (i) => i.remainingDue > 0 && new Date(`${i.dueDate}T00:00:00`) < new Date()
   );
   const today = new Date().toISOString().slice(0, 10);
-  const collectedToday = dataStore
-    .getPayments(org.id)
+  const collectedToday = (await dataStore.getPayments(org.id))
     .filter((p) => new Date(p.paidAt).toISOString().slice(0, 10) === today)
     .reduce((sum, p) => sum + p.amount, 0);
   const outstanding = overdue.reduce((sum, i) => sum + i.remainingDue, 0);
@@ -64,11 +63,11 @@ async function sendDailyDigest(org: Organization, appUrl: string): Promise<strin
 async function processOrganization(orgId: string, appUrl: string) {
   const now = new Date();
   // 1. Billing: make sure this month's échéances exist.
-  const generated = dataStore.generateMonthlyInstallments(orgId, now.getFullYear(), now.getMonth() + 1);
+  const generated = await dataStore.generateMonthlyInstallments(orgId, now.getFullYear(), now.getMonth() + 1);
   // 2. Statuses + late fees.
-  dataStore.refreshInstallmentStatuses(orgId);
+  await dataStore.refreshInstallmentStatuses(orgId);
 
-  const org = dataStore.getOrganization(orgId);
+  const org = await dataStore.getOrganization(orgId);
   const settings = org.settings || {};
 
   let digest = "désactivé";
@@ -79,7 +78,7 @@ async function processOrganization(orgId: string, appUrl: string) {
     } else {
       digest = await sendDailyDigest(org, appUrl);
       if (digest === "rapport envoyé") {
-        dataStore.updateOrganization(orgId, { lastDigestSentOn: today });
+        await dataStore.updateOrganization(orgId, { lastDigestSentOn: today });
       }
     }
   }
@@ -97,8 +96,7 @@ async function processOrganization(orgId: string, appUrl: string) {
     return { organizationId: orgId, generated: generated.length, processed: 0, sent: 0, failed: 0, digest };
   }
 
-  const installments = dataStore
-    .getInstallments(orgId, "ALL")
+  const installments = (await dataStore.getInstallments(orgId, "ALL"))
     .filter((i) => i.remainingDue > 0 && i.status !== "PAID" && i.status !== "CANCELLED");
 
   let processed = 0;
@@ -110,7 +108,7 @@ async function processOrganization(orgId: string, appUrl: string) {
     if (!sequence) continue;
 
     for (const channel of channels) {
-      if (alreadyReminded(orgId, installment.id, sequence, channel)) continue;
+      if (await alreadyReminded(orgId, installment.id, sequence, channel)) continue;
       processed += 1;
       const result = await sendReminder({
         organizationId: orgId,
@@ -149,7 +147,7 @@ async function handle(request: NextRequest) {
   }
 
   const appUrl = process.env.APP_URL || new URL(request.url).origin;
-  const organizations = dataStore.getOrganizations();
+  const organizations = await dataStore.getOrganizations();
   const results = [];
 
   for (const org of organizations) {

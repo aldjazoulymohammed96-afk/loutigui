@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const { organization } = await requireAuth();
-    return NextResponse.json({ success: true, data: dataStore.getTickets(organization.id) });
+    return NextResponse.json({ success: true, data: await dataStore.getTickets(organization.id) });
   } catch (error) {
     return errorResponse(error);
   }
@@ -26,16 +26,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const unit = dataStore.getUnit(organization.id, parsed.data.unitId);
+    const unit = await dataStore.getUnit(organization.id, parsed.data.unitId);
     if (!unit) {
       return NextResponse.json({ success: false, error: "Lot introuvable." }, { status: 404 });
     }
 
     // Resolve the tenant on the server. Never invent a fake tenant or phone.
     const tenantId = parsed.data.tenantId || unit.currentTenantId;
-    const tenant = tenantId ? dataStore.getTenant(organization.id, tenantId) : undefined;
+    const tenant = tenantId ? await dataStore.getTenant(organization.id, tenantId) : undefined;
 
-    const ticket = dataStore.createTicket(organization.id, {
+    const ticket = await dataStore.createTicket(organization.id, {
       unitId: unit.id,
       unitNumber: unit.unitNumber,
       buildingName: unit.buildingName || "Immeuble",
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       vendorPhone: parsed.data.vendorPhone || undefined,
     });
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,
@@ -84,9 +84,9 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const updated = dataStore.updateTicket(organization.id, id, parsed.data);
+    const updated = await dataStore.updateTicket(organization.id, id, parsed.data);
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,

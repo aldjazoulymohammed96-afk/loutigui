@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     const plan = String(metadata.plan || "").toUpperCase() as SubscriptionPlanType;
     const paymentRef = String(data.id || data.transaction_id || "");
 
-    if (!organizationId || !dataStore.getOrganizationById(organizationId)) {
+    if (!organizationId || !await dataStore.getOrganizationById(organizationId)) {
       return NextResponse.json({ error: "Organisation inconnue dans les métadonnées." }, { status: 400 });
     }
     if (plan !== "STARTER" && plan !== "PRO" && plan !== "AGENCE") {
@@ -53,13 +53,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Référence de paiement manquante." }, { status: 400 });
     }
 
-    const org = dataStore.getOrganization(organizationId);
+    const org = await dataStore.getOrganization(organizationId);
     if (org.lastPaymentId === paymentRef) {
       return NextResponse.json({ received: true, duplicate: true });
     }
 
-    dataStore.activateSubscription(organizationId, plan, paymentRef, 30);
-    dataStore.audit({
+    await dataStore.activateSubscription(organizationId, plan, paymentRef, 30);
+    await dataStore.audit({
       organizationId,
       action: "SUBSCRIPTION_ACTIVATED",
       entity: "Subscription",

@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: passwordError }, { status: 400 });
     }
 
-    const session = dataStore.register({
+    const session = await dataStore.register({
       name: parsed.data.name,
       phone: parsed.data.phone,
       email: parsed.data.email || undefined,
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: session.organization.id,
       userId: session.user.id,
       userEmail: session.user.email,

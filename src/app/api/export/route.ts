@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     const format = request.nextUrl.searchParams.get("format") || "json";
     const today = new Date().toISOString().split("T")[0];
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (format === "receipts") {
-      const rows = dataStore.getReceipts(organization.id).map((r) => [
+      const rows = (await dataStore.getReceipts(organization.id)).map((r) => [
         r.receiptNumber, r.issuedAt, r.tenantName, r.tenantPhone,
         `${r.unitNumber} (${r.buildingName})`, r.periodLabel, r.amountPaid,
         r.rentAmount, r.chargesAmount, r.remainingDue, r.paymentMethod,
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (format === "installments") {
-      const rows = dataStore.getInstallments(organization.id).map((i) => [
+      const rows = (await dataStore.getInstallments(organization.id)).map((i) => [
         i.tenantName, i.unitNumber, i.buildingName, i.periodLabel, i.dueDate,
         i.totalDue, i.amountPaid, i.remainingDue, i.status,
       ]);
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
 
     // Full backup of THIS organisation only, and never any credential.
     // Explicit field list: credentials can never leak into a backup file.
-    const users = dataStore.getUsers(organization.id).map((u) => ({
+    const users = (await dataStore.getUsers(organization.id)).map((u) => ({
       id: u.id,
       organizationId: u.organizationId,
       name: u.name,
@@ -112,16 +112,16 @@ export async function GET(request: NextRequest) {
       exportedAt: new Date().toISOString(),
       organization,
       users,
-      buildings: dataStore.getBuildings(organization.id),
-      units: dataStore.getUnits(organization.id),
-      tenants: dataStore.getTenants(organization.id),
-      leases: dataStore.getLeases(organization.id),
-      installments: dataStore.getInstallments(organization.id),
-      payments: dataStore.getPayments(organization.id),
-      receipts: dataStore.getReceipts(organization.id),
-      reminders: dataStore.getReminders(organization.id),
-      tickets: dataStore.getTickets(organization.id),
-      auditLogs: dataStore.getAuditLogs(organization.id),
+      buildings: await dataStore.getBuildings(organization.id),
+      units: await dataStore.getUnits(organization.id),
+      tenants: await dataStore.getTenants(organization.id),
+      leases: await dataStore.getLeases(organization.id),
+      installments: await dataStore.getInstallments(organization.id),
+      payments: await dataStore.getPayments(organization.id),
+      receipts: await dataStore.getReceipts(organization.id),
+      reminders: await dataStore.getReminders(organization.id),
+      tickets: await dataStore.getTickets(organization.id),
+      auditLogs: await dataStore.getAuditLogs(organization.id),
     };
     return attachment(
       JSON.stringify(backup, null, 2),

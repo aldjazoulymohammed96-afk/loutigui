@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = dataStore.findUserByIdentifier(parsed.data.identifier);
+    const user = await dataStore.findUserByIdentifier(parsed.data.identifier);
 
     // Always answer the same way to avoid account enumeration.
     const genericResponse = {
@@ -39,11 +39,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(genericResponse);
     }
 
-    const { token } = dataStore.createPasswordReset(user.id);
+    const { token } = await dataStore.createPasswordReset(user.id);
     const appUrl = process.env.APP_URL || new URL(request.url).origin;
     const resetUrl = `${appUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(token)}`;
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: user.organizationId,
       userId: user.id,
       userEmail: user.email,

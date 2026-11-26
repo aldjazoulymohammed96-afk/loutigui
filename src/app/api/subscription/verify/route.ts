@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       const paymentRef = checkRes.transactionId || sessionId;
       // Idempotent activation: replaying the callback does not extend twice.
       if (organization.lastPaymentId !== paymentRef) {
-        dataStore.activateSubscription(organization.id, plan, paymentRef, 30);
+        await dataStore.activateSubscription(organization.id, plan, paymentRef, 30);
       }
 
       return NextResponse.json({
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         activated: true,
         status,
         transactionId: checkRes.transactionId,
-        subscription: dataStore.getSubscriptionInfo(organization.id),
+        subscription: await dataStore.getSubscriptionInfo(organization.id),
       });
     }
 

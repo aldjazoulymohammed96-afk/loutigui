@@ -14,7 +14,7 @@ export async function GET() {
         { status: 403 }
       );
     }
-    return NextResponse.json({ success: true, data: dataStore.getAuditLogs(organization.id) });
+    return NextResponse.json({ success: true, data: await dataStore.getAuditLogs(organization.id) });
   } catch (error) {
     return errorResponse(error);
   }

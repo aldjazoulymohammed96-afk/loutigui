@@ -18,7 +18,7 @@ export async function PATCH(
     if (action.success) {
       let lease;
       if (action.data.action === "terminate") {
-        lease = dataStore.terminateLease(organization.id, id, action.data.endDate, action.data.reason);
+        lease = await dataStore.terminateLease(organization.id, id, action.data.endDate, action.data.reason);
       } else if (action.data.action === "renew") {
         if (!action.data.newEndDate) {
           return NextResponse.json(
@@ -26,16 +26,16 @@ export async function PATCH(
             { status: 400 }
           );
         }
-        lease = dataStore.renewLease(organization.id, id, action.data.newEndDate);
+        lease = await dataStore.renewLease(organization.id, id, action.data.newEndDate);
       } else {
-        const current = dataStore.getLease(organization.id, id);
+        const current = await dataStore.getLease(organization.id, id);
         if (!current) {
           return NextResponse.json({ success: false, error: "Bail introuvable." }, { status: 404 });
         }
-        lease = dataStore.updateLease(organization.id, id, { status: "NOTICE_GIVEN" });
+        lease = await dataStore.updateLease(organization.id, id, { status: "NOTICE_GIVEN" });
       }
 
-      dataStore.audit({
+      await dataStore.audit({
         organizationId: organization.id,
         userId: user.id,
         userEmail: user.email,
@@ -56,12 +56,12 @@ export async function PATCH(
       );
     }
 
-    const lease = dataStore.updateLease(organization.id, id, {
+    const lease = await dataStore.updateLease(organization.id, id, {
       ...parsed.data,
       endDate: parsed.data.endDate === "" ? undefined : parsed.data.endDate,
     });
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,

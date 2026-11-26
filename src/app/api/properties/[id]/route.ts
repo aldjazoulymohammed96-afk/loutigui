@@ -36,8 +36,8 @@ export async function PATCH(
           { status: 400 }
         );
       }
-      const building = dataStore.updateBuilding(organization.id, id, parsed.data);
-      dataStore.audit({
+      const building = await dataStore.updateBuilding(organization.id, id, parsed.data);
+      await dataStore.audit({
         organizationId: organization.id,
         userId: user.id,
         userEmail: user.email,
@@ -56,8 +56,8 @@ export async function PATCH(
         { status: 400 }
       );
     }
-    const unit = dataStore.updateUnit(organization.id, id, parsed.data);
-    dataStore.audit({
+    const unit = await dataStore.updateUnit(organization.id, id, parsed.data);
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,
@@ -88,12 +88,12 @@ export async function DELETE(
     }
 
     if (type === "building") {
-      dataStore.deleteBuilding(organization.id, id);
+      await dataStore.deleteBuilding(organization.id, id);
     } else {
-      dataStore.deleteUnit(organization.id, id);
+      await dataStore.deleteUnit(organization.id, id);
     }
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,

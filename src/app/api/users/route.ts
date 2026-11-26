@@ -21,7 +21,7 @@ export async function GET() {
     }
     return NextResponse.json({
       success: true,
-      data: dataStore.getUsers(organization.id).map(sanitizeUser),
+      data: (await dataStore.getUsers(organization.id)).map(sanitizeUser),
     });
   } catch (error) {
     return errorResponse(error);
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: strength }, { status: 400 });
     }
 
-    const created = dataStore.createUser(organization.id, {
+    const created = await dataStore.createUser(organization.id, {
       name: parsed.data.name,
       phone: parsed.data.phone,
       email: parsed.data.email || undefined,
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       role: parsed.data.role,
     });
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,

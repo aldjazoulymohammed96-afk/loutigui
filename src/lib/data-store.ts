@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import crypto from "crypto";
 import {
   Organization,
@@ -21,62 +19,23 @@ import {
   SubscriptionInfo,
   AuditLog,
 } from "@/types";
+import type { DatabaseSchema, PasswordResetToken } from "@/lib/db-types";
+import {
+  currentDb,
+  emptyDatabase,
+  markDirty,
+  withState,
+  type NormalizeResult,
+} from "@/lib/db-state";
 import { hashPassword, isLegacyPasswordHash, verifyPassword } from "@/lib/password";
 import { normalizePlan, planLimit } from "@/lib/plans";
 
-interface PasswordResetToken {
-  tokenHash: string;
-  userId: string;
-  expiresAt: string;
-  usedAt?: string;
-}
-
-interface DatabaseSchema {
-  schemaVersion: number;
-  organizations: Organization[];
-  users: User[];
-  buildings: Building[];
-  units: Unit[];
-  tenants: Tenant[];
-  leases: Lease[];
-  installments: Installment[];
-  payments: Payment[];
-  receipts: Receipt[];
-  tickets: MaintenanceTicket[];
-  reminders: ReminderLog[];
-  auditLogs: AuditLog[];
-  passwordResets: PasswordResetToken[];
-  nextReceiptSeq: number;
-}
-
-const DB_DIR = path.join(process.cwd(), "data");
-const DB_FILE = path.join(DB_DIR, "db.json");
 const CURRENT_SCHEMA_VERSION = 2;
 
 const MONTH_NAMES = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
   "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
 ];
-
-function emptyDatabase(): DatabaseSchema {
-  return {
-    schemaVersion: CURRENT_SCHEMA_VERSION,
-    organizations: [],
-    users: [],
-    buildings: [],
-    units: [],
-    tenants: [],
-    leases: [],
-    installments: [],
-    payments: [],
-    receipts: [],
-    tickets: [],
-    reminders: [],
-    auditLogs: [],
-    passwordResets: [],
-    nextReceiptSeq: 1,
-  };
-}
 
 function startOfDay(date: Date): Date {
   const copy = new Date(date);
@@ -89,67 +48,22 @@ function daysBetween(a: Date, b: Date): number {
 }
 
 class DataStore {
-  private db: DatabaseSchema;
-  private lastMtimeMs = -1;
-  private lastStatAt = 0;
-
-  constructor() {
-    this.db = this.loadFromDisk();
-    this.refreshMtime();
+  /** Isolated working copy supplied by withState() for the current operation. */
+  private get db(): DatabaseSchema {
+    return currentDb();
   }
 
-  /* ---------------------------------------------------------------------- */
-  /* Persistence                                                            */
-  /* ---------------------------------------------------------------------- */
-
-  private refreshMtime(): void {
-    try {
-      this.lastMtimeMs = fs.existsSync(DB_FILE) ? fs.statSync(DB_FILE).mtimeMs : -1;
-    } catch {
-      this.lastMtimeMs = -1;
+  /** Normalise legacy data before every operation, including password hashing. */
+  public normalize(raw: unknown): NormalizeResult {
+    if (!raw || typeof raw !== "object") {
+      return { db: emptyDatabase(), changed: true };
     }
-    this.lastStatAt = Date.now();
+    return this.migrate(raw as Record<string, unknown>);
   }
 
-  /**
-   * The in-memory copy is authoritative for this process. We only stat the
-   * file (cheap, throttled) to detect changes written by another process,
-   * instead of re-reading and re-parsing the whole JSON on every getter.
-   */
+  /** The backend always supplies a fresh snapshot for the operation. */
   private ensureFreshData(): void {
-    const now = Date.now();
-    if (now - this.lastStatAt < 1000) return;
-    this.lastStatAt = now;
-
-    try {
-      if (!fs.existsSync(DB_FILE)) return;
-      const mtimeMs = fs.statSync(DB_FILE).mtimeMs;
-      if (mtimeMs !== this.lastMtimeMs) {
-        this.db = this.loadFromDisk();
-        this.lastMtimeMs = mtimeMs;
-      }
-    } catch {
-      // Keep the in-memory copy if the file cannot be inspected.
-    }
-  }
-
-  private loadFromDisk(): DatabaseSchema {
-    try {
-      if (!fs.existsSync(DB_FILE)) return emptyDatabase();
-      const raw = fs.readFileSync(DB_FILE, "utf-8");
-      const parsed = JSON.parse(raw);
-      const { db, changed } = this.migrate(parsed);
-      if (changed) {
-        // Persist the migrated shape immediately so plaintext passwords never
-        // survive in the file after the first boot of this version.
-        this.db = db;
-        this.saveToDisk();
-      }
-      return db;
-    } catch (error) {
-      console.error("Impossible de lire data/db.json, démarrage sur une base vide :", error);
-      return emptyDatabase();
-    }
+    // Nothing to do: state is loaded by withState().
   }
 
   /**
@@ -273,22 +187,9 @@ class DataStore {
     };
   }
 
-  private saveToDisk(): void {
-    try {
-      if (!fs.existsSync(DB_DIR)) {
-        fs.mkdirSync(DB_DIR, { recursive: true });
-      }
-      const payload = JSON.stringify(this.db, null, 2);
-      const tempFile = `${DB_FILE}.${process.pid}.tmp`;
-      // Write to a temporary file then rename: an interrupted write can never
-      // leave a truncated db.json behind.
-      fs.writeFileSync(tempFile, payload, { encoding: "utf-8", mode: 0o600 });
-      fs.renameSync(tempFile, DB_FILE);
-      this.refreshMtime();
-    } catch (e) {
-      console.error("Échec de la sauvegarde de la base de données :", e);
-      throw new Error("Impossible d'enregistrer les données. Réessayez.");
-    }
+  /** The backend commits the document when the whole operation succeeded. */
+  private markChanged(): void {
+    markDirty();
   }
 
   /* ---------------------------------------------------------------------- */
@@ -314,7 +215,7 @@ class DataStore {
   public updateOrganization(orgId: string, updates: Partial<Organization>): Organization {
     const org = this.getOrganization(orgId);
     Object.assign(org, updates);
-    this.saveToDisk();
+    this.markChanged();
     return org;
   }
 
@@ -378,7 +279,7 @@ class DataStore {
     org.subscriptionStatus = "ACTIVE";
     org.subscriptionExpiresAt = expiresAt;
     if (paymentRef) org.lastPaymentId = paymentRef;
-    this.saveToDisk();
+    this.markChanged();
     return org;
   }
 
@@ -456,7 +357,7 @@ class DataStore {
       createdAt: new Date().toISOString(),
     };
     this.db.users.push(user);
-    this.saveToDisk();
+    this.markChanged();
     return user;
   }
 
@@ -495,7 +396,7 @@ class DataStore {
     if (updates.avatarUrl !== undefined) {
       user.avatarUrl = updates.avatarUrl.trim() || undefined;
     }
-    this.saveToDisk();
+    this.markChanged();
     return user;
   }
 
@@ -508,7 +409,7 @@ class DataStore {
       throw new Error("Impossible de supprimer le dernier administrateur de l'organisation.");
     }
     this.db.users = this.db.users.filter((u) => u.id !== id);
-    this.saveToDisk();
+    this.markChanged();
   }
 
   public changePassword(id: string, currentPassword: string, newPassword: string): void {
@@ -523,7 +424,7 @@ class DataStore {
     }
     user.passwordHash = hashPassword(newPassword);
     delete user.password;
-    this.saveToDisk();
+    this.markChanged();
   }
 
   /** Create a single-use, one-hour password reset token (stored hashed). */
@@ -535,7 +436,7 @@ class DataStore {
     // Invalidate previous unused tokens for this user.
     this.db.passwordResets = this.db.passwordResets.filter((r) => r.userId !== userId || r.usedAt);
     this.db.passwordResets.push({ tokenHash, userId, expiresAt });
-    this.saveToDisk();
+    this.markChanged();
     return { token, expiresAt };
   }
 
@@ -551,7 +452,7 @@ class DataStore {
     user.passwordHash = hashPassword(newPassword);
     delete user.password;
     record.usedAt = new Date().toISOString();
-    this.saveToDisk();
+    this.markChanged();
     return user;
   }
 
@@ -617,7 +518,7 @@ class DataStore {
 
     this.db.organizations.push(organization);
     this.db.users.push(user);
-    this.saveToDisk();
+    this.markChanged();
     return { user, organization };
   }
 
@@ -633,7 +534,7 @@ class DataStore {
     if (user.password || isLegacyPasswordHash(user.passwordHash)) {
       user.passwordHash = hashPassword(password);
       delete user.password;
-      this.saveToDisk();
+      this.markChanged();
     }
 
     const organization = this.getOrganizationById(user.organizationId);
@@ -671,7 +572,7 @@ class DataStore {
       this.clearOrganizationData(orgId);
     }
 
-    this.saveToDisk();
+    this.markChanged();
     return org;
   }
 
@@ -690,7 +591,7 @@ class DataStore {
       org.isVirgin = true;
       org.receiptSeq = 0;
     }
-    this.saveToDisk();
+    this.markChanged();
   }
 
   /* ---------------------------------------------------------------------- */
@@ -718,7 +619,7 @@ class DataStore {
       createdAt: new Date().toISOString(),
     };
     this.db.buildings.unshift(building);
-    this.saveToDisk();
+    this.markChanged();
     return building;
   }
 
@@ -733,7 +634,7 @@ class DataStore {
         (building as unknown as Record<string, unknown>)[key] = data[key];
       }
     }
-    this.saveToDisk();
+    this.markChanged();
     return building;
   }
 
@@ -745,7 +646,7 @@ class DataStore {
       throw new Error("Supprimez d'abord les lots de cet immeuble.");
     }
     this.db.buildings = this.db.buildings.filter((b) => b.id !== id);
-    this.saveToDisk();
+    this.markChanged();
   }
 
   public getUnits(orgId: string): Unit[] {
@@ -777,7 +678,7 @@ class DataStore {
     };
     this.db.units.unshift(unit);
     building.totalUnits = this.getUnits(orgId).filter((u) => u.buildingId === building.id).length;
-    this.saveToDisk();
+    this.markChanged();
     return unit;
   }
 
@@ -793,7 +694,7 @@ class DataStore {
         (unit as unknown as Record<string, unknown>)[key] = data[key];
       }
     }
-    this.saveToDisk();
+    this.markChanged();
     return unit;
   }
 
@@ -807,7 +708,7 @@ class DataStore {
     if (building) {
       building.totalUnits = this.getUnits(orgId).filter((u) => u.buildingId === building.id).length;
     }
-    this.saveToDisk();
+    this.markChanged();
   }
 
   /* ---------------------------------------------------------------------- */
@@ -836,7 +737,7 @@ class DataStore {
     this.db.tenants.unshift(tenant);
     const org = this.getOrganization(orgId);
     org.isVirgin = false;
-    this.saveToDisk();
+    this.markChanged();
     return tenant;
   }
 
@@ -862,7 +763,7 @@ class DataStore {
       inst.tenantName = fullName;
       inst.tenantPhone = tenant.phone;
     }
-    this.saveToDisk();
+    this.markChanged();
     return tenant;
   }
 
@@ -879,7 +780,7 @@ class DataStore {
         unit.status = "VACANT";
       }
     }
-    this.saveToDisk();
+    this.markChanged();
   }
 
   /* ---------------------------------------------------------------------- */
@@ -927,7 +828,7 @@ class DataStore {
 
     const org = this.getOrganization(orgId);
     org.isVirgin = false;
-    this.saveToDisk();
+    this.markChanged();
     return lease;
   }
 
@@ -943,7 +844,7 @@ class DataStore {
         (lease as unknown as Record<string, unknown>)[key] = data[key];
       }
     }
-    this.saveToDisk();
+    this.markChanged();
     return lease;
   }
 
@@ -967,7 +868,7 @@ class DataStore {
         inst.status = "CANCELLED";
       }
     }
-    this.saveToDisk();
+    this.markChanged();
     return lease;
   }
 
@@ -983,7 +884,7 @@ class DataStore {
       unit.currentTenantId = tenant.id;
       unit.currentTenantName = `${tenant.firstName} ${tenant.lastName}`;
     }
-    this.saveToDisk();
+    this.markChanged();
     return lease;
   }
 
@@ -1064,7 +965,7 @@ class DataStore {
       created.push(installment);
     }
 
-    if (created.length > 0) this.saveToDisk();
+    if (created.length > 0) this.markChanged();
     return created;
   }
 
@@ -1106,7 +1007,7 @@ class DataStore {
       }
     }
 
-    if (changed) this.saveToDisk();
+    if (changed) this.markChanged();
   }
 
   /* ---------------------------------------------------------------------- */
@@ -1201,7 +1102,7 @@ class DataStore {
 
     this.db.payments.unshift(payment);
     this.db.receipts.unshift(receipt);
-    this.saveToDisk();
+    this.markChanged();
     return { payment, receipt, installment };
   }
 
@@ -1250,7 +1151,7 @@ class DataStore {
       createdAt: new Date().toISOString(),
     };
     this.db.tickets.unshift(ticket);
-    this.saveToDisk();
+    this.markChanged();
     return ticket;
   }
 
@@ -1269,7 +1170,7 @@ class DataStore {
     if (data.estimatedCost !== undefined) ticket.estimatedCost = data.estimatedCost;
     if (data.vendorName !== undefined) ticket.vendorName = data.vendorName;
     if (data.vendorPhone !== undefined) ticket.vendorPhone = data.vendorPhone;
-    this.saveToDisk();
+    this.markChanged();
     return ticket;
   }
 
@@ -1277,7 +1178,7 @@ class DataStore {
     const exists = this.db.tickets.some((t) => t.id === id && t.organizationId === orgId);
     if (!exists) throw new Error("Ticket introuvable.");
     this.db.tickets = this.db.tickets.filter((t) => t.id !== id);
-    this.saveToDisk();
+    this.markChanged();
   }
 
   /* ---------------------------------------------------------------------- */
@@ -1305,7 +1206,7 @@ class DataStore {
       sentAt: new Date().toISOString(),
     };
     this.db.reminders.unshift(reminder);
-    this.saveToDisk();
+    this.markChanged();
     return reminder;
   }
 
@@ -1336,7 +1237,7 @@ class DataStore {
     if (this.db.auditLogs.length > 10_000) {
       this.db.auditLogs = this.db.auditLogs.slice(0, 10_000);
     }
-    this.saveToDisk();
+    this.markChanged();
   }
 
   public getAuditLogs(orgId: string): AuditLog[] {
@@ -1411,5 +1312,29 @@ class DataStore {
   }
 }
 
-// Singleton instance
-export const dataStore = new DataStore();
+const storeInstance = new DataStore();
+
+type AsyncStore = {
+  [K in keyof typeof storeInstance]: (typeof storeInstance)[K] extends (
+    ...args: infer A
+  ) => infer R
+    ? (...args: A) => Promise<Awaited<R>>
+    : (typeof storeInstance)[K];
+};
+
+/**
+ * Every public call opens its own transaction/state snapshot. Nested calls
+ * inside the store stay synchronous and share that snapshot, so business
+ * rules are untouched while the API becomes awaitable for serverless usage.
+ */
+export const dataStore = new Proxy(storeInstance, {
+  get(target, prop) {
+    const value = Reflect.get(target, prop);
+    if (typeof value !== "function") return value;
+    return (...args: unknown[]) =>
+      withState(
+        (raw) => target.normalize(raw),
+        () => (value as (...a: unknown[]) => unknown).apply(target, args)
+      );
+  },
+}) as unknown as AsyncStore;

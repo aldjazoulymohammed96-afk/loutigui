@@ -9,7 +9,7 @@ export const revalidate = 0;
 export async function GET() {
   try {
     const { organization } = await requireAuth();
-    return NextResponse.json({ success: true, data: dataStore.getTenants(organization.id) });
+    return NextResponse.json({ success: true, data: await dataStore.getTenants(organization.id) });
   } catch (error) {
     return errorResponse(error);
   }
@@ -27,14 +27,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const tenant = dataStore.createTenant(organization.id, {
+    const tenant = await dataStore.createTenant(organization.id, {
       ...parsed.data,
       email: parsed.data.email || undefined,
       emergencyContactPhone: parsed.data.emergencyContactPhone || undefined,
       guarantorPhone: parsed.data.guarantorPhone || undefined,
     });
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,

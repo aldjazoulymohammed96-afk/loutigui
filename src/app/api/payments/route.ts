@@ -9,7 +9,7 @@ export const revalidate = 0;
 export async function GET() {
   try {
     const { organization } = await requireAuth();
-    return NextResponse.json({ success: true, data: dataStore.getPayments(organization.id) });
+    return NextResponse.json({ success: true, data: await dataStore.getPayments(organization.id) });
   } catch (error) {
     return errorResponse(error);
   }
@@ -34,12 +34,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = dataStore.recordPayment(organization.id, {
+    const result = await dataStore.recordPayment(organization.id, {
       ...parsed.data,
       recordedByUserId: user.id,
     });
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,

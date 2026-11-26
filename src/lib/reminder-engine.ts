@@ -25,13 +25,13 @@ export interface SendReminderResult {
 
 /** Shared by the manual "send reminder" action and the automatic cron job. */
 export async function sendReminder(input: SendReminderInput): Promise<SendReminderResult> {
-  const installment = dataStore.getInstallment(input.organizationId, input.installmentId);
+  const installment = await dataStore.getInstallment(input.organizationId, input.installmentId);
   if (!installment) {
     return { success: false, status: 404, message: "Échéance introuvable." };
   }
 
-  const org = dataStore.getOrganization(input.organizationId);
-  const tenant = dataStore.getTenant(input.organizationId, installment.tenantId);
+  const org = await dataStore.getOrganization(input.organizationId);
+  const tenant = await dataStore.getTenant(input.organizationId, installment.tenantId);
   const settings = org.settings || {};
   const label = SEQUENCE_LABELS[input.sequence][settings.receiptLanguage === "en" ? "en" : "fr"];
 
@@ -80,7 +80,7 @@ export async function sendReminder(input: SendReminderInput): Promise<SendRemind
     html: content.emailHtml,
   });
 
-  const log = dataStore.logReminder(input.organizationId, {
+  const log = await dataStore.logReminder(input.organizationId, {
     installmentId: installment.id,
     tenantId: installment.tenantId,
     tenantName: installment.tenantName,
@@ -103,14 +103,13 @@ export async function sendReminder(input: SendReminderInput): Promise<SendRemind
 }
 
 /** Avoid duplicate automatic sends for the same event/channel. */
-export function alreadyReminded(
+export async function alreadyReminded(
   organizationId: string,
   installmentId: string,
   sequence: ReminderSequence,
   channel: NotificationChannel
-): boolean {
-  return dataStore
-    .getReminders(organizationId)
+): Promise<boolean> {
+  return (await dataStore.getReminders(organizationId))
     .some(
       (r) =>
         r.installmentId === installmentId &&

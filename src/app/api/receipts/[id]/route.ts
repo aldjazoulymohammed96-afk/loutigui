@@ -11,7 +11,7 @@ export async function GET(
   try {
     const { organization } = await requireAuth();
     const { id } = await params;
-    const receipt = dataStore.getReceiptById(organization.id, id);
+    const receipt = await dataStore.getReceiptById(organization.id, id);
     if (!receipt) {
       return NextResponse.json({ success: false, error: "Quittance introuvable." }, { status: 404 });
     }

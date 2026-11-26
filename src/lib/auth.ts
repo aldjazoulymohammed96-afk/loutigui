@@ -23,10 +23,10 @@ export async function getAuth(): Promise<AuthContext | null> {
   const payload = verifySessionToken(token);
   if (!payload) return null;
 
-  const user = dataStore.getUserById(payload.userId);
+  const user = await dataStore.getUserById(payload.userId);
   if (!user) return null;
 
-  const organization = dataStore.getOrganizationById(user.organizationId);
+  const organization = await dataStore.getOrganizationById(user.organizationId);
   if (!organization) return null;
 
   return { user, organization };

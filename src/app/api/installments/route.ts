@@ -8,11 +8,11 @@ export const revalidate = 0;
 export async function GET(request: NextRequest) {
   try {
     const { organization } = await requireAuth();
-    dataStore.refreshInstallmentStatuses(organization.id);
+    await dataStore.refreshInstallmentStatuses(organization.id);
     const status = request.nextUrl.searchParams.get("status") || "ALL";
     return NextResponse.json({
       success: true,
-      data: dataStore.getInstallments(organization.id, status),
+      data: await dataStore.getInstallments(organization.id, status),
     });
   } catch (error) {
     return errorResponse(error);
@@ -32,9 +32,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Période invalide." }, { status: 400 });
     }
 
-    const created = dataStore.generateMonthlyInstallments(organization.id, year, month);
+    const created = await dataStore.generateMonthlyInstallments(organization.id, year, month);
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,

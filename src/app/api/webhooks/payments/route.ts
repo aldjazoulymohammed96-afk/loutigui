@@ -69,14 +69,13 @@ export async function POST(request: Request) {
   }
 
   // Idempotency: never record the same provider transaction twice.
-  const already = dataStore
-    .getPayments(organizationId)
+  const already = (await dataStore.getPayments(organizationId))
     .some((p) => p.externalTransactionRef === transactionId);
   if (already) {
     return NextResponse.json({ received: true, duplicate: true });
   }
 
-  const installment = dataStore.getInstallment(organizationId, installmentId);
+  const installment = await dataStore.getInstallment(organizationId, installmentId);
   if (!installment) {
     return NextResponse.json({ error: "Échéance introuvable." }, { status: 404 });
   }
@@ -84,7 +83,7 @@ export async function POST(request: Request) {
   const safeAmount = Number.isFinite(amount) && amount > 0 ? amount : installment.remainingDue;
 
   try {
-    const result = dataStore.recordPayment(organizationId, {
+    const result = await dataStore.recordPayment(organizationId, {
       installmentId,
       amount: Math.min(safeAmount, installment.remainingDue),
       paymentMethod: "MOBILE_MONEY",
@@ -93,7 +92,7 @@ export async function POST(request: Request) {
       notes: `Paiement en ligne confirmé par webhook (${data.provider || "fournisseur"}).`,
     });
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId,
       action: "PAYMENT_WEBHOOK_CONFIRMED",
       entity: "Payment",

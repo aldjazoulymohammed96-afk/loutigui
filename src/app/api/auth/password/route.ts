@@ -24,9 +24,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: strength }, { status: 400 });
     }
 
-    dataStore.changePassword(user.id, parsed.data.currentPassword, parsed.data.newPassword);
+    await dataStore.changePassword(user.id, parsed.data.currentPassword, parsed.data.newPassword);
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,

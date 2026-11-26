@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    dataStore.audit({
+    await dataStore.audit({
       organizationId: organization.id,
       userId: user.id,
       userEmail: user.email,
