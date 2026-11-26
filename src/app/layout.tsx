@@ -5,6 +5,9 @@ import { AppProvider } from "@/context/AppContext";
 import { AppLayout } from "@/components/AppLayout";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://loutigui.app"
+  ),
   title: "LOUTIGUI – Plateforme SaaS de Gestion Locative",
   description:
     "Système d'exploitation de gestion locative en Afrique francophone. Suivi des loyers, quittances sécurisées QR Code, encaissements Mobile Money et relances automatiques.",

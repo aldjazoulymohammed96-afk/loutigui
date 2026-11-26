@@ -70,7 +70,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (pathname === "/" && !isAuthenticated && !isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 font-sans">
+      <div className="min-h-screen bg-[#050b14] font-sans">
         <LandingPage />
         <Toasts />
       </div>
