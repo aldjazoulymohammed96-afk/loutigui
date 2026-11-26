@@ -145,7 +145,7 @@ export default function VerifyReceiptPage() {
             {/* Cryptographic Footprint */}
             <div className="text-center space-y-1">
               <p className="text-[10px] uppercase font-bold text-slate-500">
-                Empreinte SHA-256 de vérification
+                Référence de vérification
               </p>
               <p className="font-mono text-[10px] text-slate-400 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 break-all select-all">
                 {data.verificationHash}

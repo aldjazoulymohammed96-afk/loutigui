@@ -18,16 +18,78 @@ body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
-/* Print styles specifically for official receipts */
+/* Print-ready official documents (leases and receipts) */
 @media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
   body {
     background: #ffffff !important;
     color: #000000 !important;
   }
+
   .no-print {
     display: none !important;
   }
+
   .print-only {
     display: block !important;
+  }
+
+  /* Only the document itself reaches the paper. */
+  body * {
+    visibility: hidden !important;
+  }
+  .document-print,
+  .document-print * {
+    visibility: visible !important;
+  }
+
+  .document-overlay,
+  .document-modal-shell {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+    transform: none !important;
+  }
+
+  .document-print {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  a {
+    text-decoration: none !important;
   }
 }
