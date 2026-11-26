@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "LOUTIGUI – Plateforme SaaS de Gestion Locative",
   description:
     "Système d'exploitation de gestion locative en Afrique francophone. Suivi des loyers, quittances sécurisées QR Code, encaissements Mobile Money et relances automatiques.",
+  icons: { icon: "/icon.svg", shortcut: "/icon.svg", apple: "/icon.svg" },
 };
 
 export default function RootLayout({
