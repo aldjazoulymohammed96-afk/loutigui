@@ -61,7 +61,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (isPublicRoute) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+      <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans">
         {children}
         <Toasts />
       </div>
@@ -70,7 +70,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (pathname === "/" && !isAuthenticated && !isLoading) {
     return (
-      <div className="min-h-screen bg-[#050b14] font-sans">
+      <div className="min-h-screen bg-[#f8fafc] font-sans">
         <LandingPage />
         <Toasts />
       </div>
@@ -79,7 +79,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
         <div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
         <Toasts />
       </div>

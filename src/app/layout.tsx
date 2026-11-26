@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { AppProvider } from "@/context/AppContext";
@@ -20,8 +21,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="light">
+    <html lang="fr" className="light" suppressHydrationWarning>
       <body className="antialiased selection:bg-emerald-500 selection:text-white">
+        <Script id="lp-theme-init" strategy="beforeInteractive">
+          {`(function(){try{if(localStorage.getItem('loutigui-landing-theme')==='dark'){document.documentElement.setAttribute('data-lp-theme','dark');}}catch(e){}})();`}
+        </Script>
         <AuthProvider>
           <AppProvider>
             <AppLayout>{children}</AppLayout>
