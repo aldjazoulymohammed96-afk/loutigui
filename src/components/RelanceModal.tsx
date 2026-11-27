@@ -136,7 +136,7 @@ export function RelanceModal({ installment, onClose, onSuccess }: RelanceModalPr
                 Envoyer une Relance
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                SMS via Twilio/passerelle · Email via Brevo/SendGrid
+                SMS via Twilio/passerelle · Email via Resend/Brevo/SendGrid
               </p>
             </div>
           </div>

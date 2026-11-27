@@ -91,7 +91,10 @@ async function postJson(
 
 export function getNotificationStatus(): NotificationStatus {
   const smsProvider = (env("SMS_PROVIDER") || (env("TWILIO_ACCOUNT_SID") ? "twilio" : "generic")).toLowerCase();
-  const emailProvider = (env("EMAIL_PROVIDER") || (env("BREVO_API_KEY") ? "brevo" : env("SENDGRID_API_KEY") ? "sendgrid" : "brevo")).toLowerCase();
+  const emailProvider = (
+    env("EMAIL_PROVIDER") ||
+    (env("RESEND_API_KEY") ? "resend" : env("BREVO_API_KEY") ? "brevo" : env("SENDGRID_API_KEY") ? "sendgrid" : "resend")
+  ).toLowerCase();
 
   let smsMissing: string[];
   if (smsProvider === "twilio") {
@@ -103,8 +106,10 @@ export function getNotificationStatus(): NotificationStatus {
   let emailMissing: string[];
   if (emailProvider === "sendgrid") {
     emailMissing = missingKeys(["SENDGRID_API_KEY", "EMAIL_FROM"]);
-  } else {
+  } else if (emailProvider === "brevo") {
     emailMissing = missingKeys(["BREVO_API_KEY", "EMAIL_FROM"]);
+  } else {
+    emailMissing = missingKeys(["RESEND_API_KEY", "EMAIL_FROM"]);
   }
 
   return {
@@ -115,7 +120,7 @@ export function getNotificationStatus(): NotificationStatus {
     },
     email: {
       configured: emailMissing.length === 0,
-      provider: emailProvider === "sendgrid" ? "SendGrid" : "Brevo",
+      provider: emailProvider === "sendgrid" ? "SendGrid" : emailProvider === "brevo" ? "Brevo" : "Resend",
       missing: emailMissing,
     },
     checkedAt: new Date().toISOString(),
@@ -188,6 +193,32 @@ async function sendEmail(input: SendNotificationInput): Promise<SendNotification
   const text = input.text;
   const html = input.html || `<p>${text.replace(/</g, "&lt;")}</p>`;
   const toName = input.toName || input.to;
+
+  if (status.provider === "Resend") {
+    const safeFromName = fromName.replace(/[<>\r\n]/g, "").trim();
+    const result = await postJson(
+      "https://api.resend.com/emails",
+      {
+        Authorization: `Bearer ${env("RESEND_API_KEY")}`,
+        "Content-Type": "application/json",
+      },
+      JSON.stringify({
+        from: safeFromName ? `${safeFromName} <${from}>` : from,
+        to: [input.to],
+        subject,
+        text,
+        html,
+      })
+    );
+    const id = result.json?.id;
+    return {
+      ok: result.ok,
+      configured: true,
+      provider: "Resend",
+      providerMessageId: typeof id === "string" ? id : result.messageId,
+      error: result.ok ? undefined : result.errorText,
+    };
+  }
 
   if (status.provider === "SendGrid") {
     const result = await postJson(

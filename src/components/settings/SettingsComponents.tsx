@@ -460,7 +460,7 @@ export function ReminderSettingsCard({
           checked={form.emailNotifications}
           onChange={(v) => update("emailNotifications", v)}
           label="Relances par email"
-          description="Envois réels via Brevo ou SendGrid vers l'adresse du locataire."
+          description="Envois réels via Resend, Brevo ou SendGrid vers l'adresse du locataire."
         />
         <ToggleSwitch
           checked={form.smsNotifications}

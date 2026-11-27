@@ -27,7 +27,7 @@ Variables obligatoires et optionnelles : voir `.env.example`.
 | `SASPAY_API_KEY`, `SASPAY_WEBHOOK_SECRET` | Abonnements SasPay | Pour les abonnements |
 | `PAYMENT_PROVIDER`, `PAYMENT_API_URL`, `PAYMENT_API_KEY`, `PAYMENT_WEBHOOK_SECRET` | Passerelle Mobile Money des loyers | Pour le paiement en ligne |
 | `SMS_PROVIDER`, `TWILIO_*` ou `SMS_GATEWAY_*` | Relances SMS réelles | Pour les SMS |
-| `EMAIL_PROVIDER`, `BREVO_API_KEY` ou `SENDGRID_API_KEY`, `EMAIL_FROM` | Relances email réelles | Pour les emails |
+| `EMAIL_PROVIDER` (`resend`, `brevo`, `sendgrid`), `RESEND_API_KEY` / `BREVO_API_KEY` / `SENDGRID_API_KEY`, `EMAIL_FROM` | Relances email réelles | Pour les emails |
 
 Générer un secret :
 
@@ -133,7 +133,7 @@ Pour tester le backend libSQL sans cloud : `TURSO_DATABASE_URL=file:data/loutigu
 
 3. Si vous migrez depuis une installation locale : `TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" npm run db:import`.
 4. Redéployer. La table `loutigui_state` est créée automatiquement au premier accès.
-5. Ajouter les variables des fournisseurs réels (Twilio/Brevo/SendGrid, passerelle Mobile Money, SasPay) uniquement si les services sont activés.
+5. Ajouter les variables des fournisseurs réels (Twilio, Resend/Brevo/SendGrid, passerelle Mobile Money, SasPay) uniquement si les services sont activés.
 
 Aucune écriture sur le système de fichiers n'est nécessaire en production. Une URL `DATABASE_URL` PostgreSQL est refusée explicitement.
 
