@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { AppProvider } from "@/context/AppContext";
@@ -23,6 +24,7 @@ export default function RootLayout({
   return (
     <html lang="fr" className="light" suppressHydrationWarning>
       <body className="antialiased selection:bg-emerald-500 selection:text-white">
+        <Analytics />
         <Script id="lp-theme-init" strategy="beforeInteractive">
           {`(function(){try{if(localStorage.getItem('loutigui-landing-theme')==='dark'){document.documentElement.setAttribute('data-lp-theme','dark');}}catch(e){}})();`}
         </Script>

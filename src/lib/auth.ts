@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Organization, User, UserRole } from "@/types";
 import { dataStore } from "@/lib/data-store";
 import { readSessionToken, verifySessionToken } from "@/lib/session";
+import { logError } from "@/lib/logger";
 
 export class ApiError extends Error {
   status: number;
@@ -99,7 +100,7 @@ export function errorResponse(error: unknown): NextResponse {
     }
   }
   // Never leak internal stack traces or driver errors to the client.
-  console.error("[API]", error);
+  logError("Erreur API non gérée", error);
   return NextResponse.json(
     { success: false, error: "Une erreur interne est survenue." },
     { status: 500 }

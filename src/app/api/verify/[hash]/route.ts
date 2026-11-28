@@ -14,7 +14,7 @@ export async function GET(
   { params }: { params: Promise<{ hash: string }> }
 ) {
   try {
-    const limit = rateLimit(rateLimitKey(request, "verify"), 60, 60 * 1000);
+    const limit = await rateLimit(rateLimitKey(request, "verify"), 60, 60 * 1000);
     if (!limit.allowed) {
       return NextResponse.json({ success: false, error: "Trop de requêtes." }, { status: 429 });
     }

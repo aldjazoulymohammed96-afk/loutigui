@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const limit = rateLimit(rateLimitKey(request, "login"), 10, 15 * 60 * 1000);
+    const limit = await rateLimit(rateLimitKey(request, "login"), 10, 15 * 60 * 1000);
     if (!limit.allowed) {
       return NextResponse.json(
         { success: false, error: "Trop de tentatives de connexion. Réessayez dans quelques minutes." },

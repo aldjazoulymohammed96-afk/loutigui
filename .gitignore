@@ -23,3 +23,6 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# Sauvegardes (contiennent des empreintes de mots de passe)
+backups/

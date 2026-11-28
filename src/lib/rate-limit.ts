@@ -1,16 +1,19 @@
+import type { Client } from "@libsql/client";
+
 /**
- * Minimal in-memory sliding-window rate limiter.
+ * Distributed sliding-window rate limiter backed by libSQL/Turso.
  *
- * It protects a single Node process (sufficient for a self-hosted deployment
- * or a single Vercel instance). For multi-instance deployments, replace the
- * Map with Redis/Upstash — the interface stays the same.
+ * The counter lives in the same durable database as the application state, so
+ * every serverless instance enforces the same limit. Updates use a
+ * compare-and-swap on `version` (no interactive transaction), which works over
+ * Turso's HTTP API. A small in-memory bucket is kept only for local
+ * development without Turso; production fails closed if the database is not
+ * configured.
  */
 
 interface Bucket {
   hits: number[];
 }
-
-const buckets = new Map<string, Bucket>();
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -18,14 +21,65 @@ export interface RateLimitResult {
   retryAfterSeconds: number;
 }
 
-export function rateLimit(key: string, limit: number, windowMs: number): RateLimitResult {
-  const now = Date.now();
-  const bucket = buckets.get(key) || { hits: [] };
+const memoryBuckets = new Map<string, Bucket>();
+const MAX_CAS_ATTEMPTS = 5;
+let clientPromise: Promise<Client> | null = null;
+
+function databaseUrl(): string | undefined {
+  const primary = process.env.TURSO_DATABASE_URL?.trim();
+  if (primary) return primary;
+
+  const legacy = process.env.DATABASE_URL?.trim();
+  if (!legacy) return undefined;
+  if (/^postgres(ql)?:\/\//i.test(legacy)) {
+    throw new Error(
+      "DATABASE_URL pointe vers PostgreSQL. Utilisez TURSO_DATABASE_URL avec une URL libSQL (libsql://…)."
+    );
+  }
+  return legacy;
+}
+
+function usesTurso(): boolean {
+  return Boolean(databaseUrl());
+}
+
+async function getClient(): Promise<Client> {
+  if (clientPromise) return clientPromise;
+
+  clientPromise = (async () => {
+    const url = databaseUrl();
+    if (!url) throw new Error("TURSO_DATABASE_URL n'est pas configuré.");
+
+    const { createClient } = await import("@libsql/client");
+    const client = createClient({
+      url,
+      authToken: process.env.TURSO_AUTH_TOKEN?.trim() || undefined,
+    });
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS loutigui_rate_limits (
+        key TEXT PRIMARY KEY,
+        hits TEXT NOT NULL,
+        version INTEGER NOT NULL DEFAULT 0,
+        updated_at INTEGER NOT NULL
+      )
+    `);
+    return client;
+  })().catch((error) => {
+    clientPromise = null;
+    throw error;
+  });
+
+  return clientPromise;
+}
+
+function memoryLimit(key: string, limit: number, windowMs: number, now: number): RateLimitResult {
+  const bucket = memoryBuckets.get(key) || { hits: [] };
   bucket.hits = bucket.hits.filter((t) => now - t < windowMs);
 
   if (bucket.hits.length >= limit) {
     const oldest = bucket.hits[0] ?? now;
-    buckets.set(key, bucket);
+    memoryBuckets.set(key, bucket);
     return {
       allowed: false,
       remaining: 0,
@@ -34,18 +88,78 @@ export function rateLimit(key: string, limit: number, windowMs: number): RateLim
   }
 
   bucket.hits.push(now);
-  buckets.set(key, bucket);
+  memoryBuckets.set(key, bucket);
+  return { allowed: true, remaining: limit - bucket.hits.length, retryAfterSeconds: 0 };
+}
 
-  // Opportunistic cleanup to avoid unbounded memory growth.
-  if (buckets.size > 5000) {
-    for (const [k, v] of buckets) {
-      if (v.hits.length === 0 || now - (v.hits[v.hits.length - 1] ?? 0) > windowMs) {
-        buckets.delete(k);
+export async function rateLimit(
+  key: string,
+  limit: number,
+  windowMs: number
+): Promise<RateLimitResult> {
+  const now = Date.now();
+
+  if (!usesTurso()) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "TURSO_DATABASE_URL est obligatoire en production pour le limiteur de débit partagé."
+      );
+    }
+    return memoryLimit(key, limit, windowMs, now);
+  }
+
+  const client = await getClient();
+
+  for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt += 1) {
+    const row = await client.execute({
+      sql: `SELECT hits, version FROM loutigui_rate_limits WHERE key = ?`,
+      args: [key],
+    });
+
+    const existing = row.rows[0];
+    const version = existing ? Number(existing.version) : 0;
+    const stored = existing ? JSON.parse(String(existing.hits)) : [];
+    const hits: number[] = Array.isArray(stored) ? stored.filter((t) => typeof t === "number") : [];
+    const recent = hits.filter((t) => now - t < windowMs);
+
+    if (recent.length >= limit) {
+      const oldest = recent[0] ?? now;
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfterSeconds: Math.max(1, Math.ceil((windowMs - (now - oldest)) / 1000)),
+      };
+    }
+
+    recent.push(now);
+
+    const write = existing
+      ? await client.execute({
+          sql: `UPDATE loutigui_rate_limits
+                SET hits = ?, version = version + 1, updated_at = ?
+                WHERE key = ? AND version = ?`,
+          args: [JSON.stringify(recent), now, key, version],
+        })
+      : await client.execute({
+          sql: `INSERT OR IGNORE INTO loutigui_rate_limits (key, hits, version, updated_at)
+                VALUES (?, ?, 1, ?)`,
+          args: [key, JSON.stringify(recent), now],
+        });
+
+    if (write.rowsAffected === 1) {
+      // Opportunistic cleanup of expired keys; keep it rare to avoid extra writes.
+      if (Math.random() < 0.01) {
+        await client.execute({
+          sql: `DELETE FROM loutigui_rate_limits WHERE updated_at < ?`,
+          args: [now - windowMs * 10],
+        });
       }
+      return { allowed: true, remaining: limit - recent.length, retryAfterSeconds: 0 };
     }
   }
 
-  return { allowed: true, remaining: limit - bucket.hits.length, retryAfterSeconds: 0 };
+  // Fail closed: never let a burst through because the shared limiter failed.
+  throw new Error("Limiteur de débit indisponible.");
 }
 
 export function rateLimitKey(request: Request, scope: string): string {

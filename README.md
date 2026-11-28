@@ -137,6 +137,14 @@ Pour tester le backend libSQL sans cloud : `TURSO_DATABASE_URL=file:data/loutigu
 
 Aucune écriture sur le système de fichiers n'est nécessaire en production. Une URL `DATABASE_URL` PostgreSQL est refusée explicitement.
 
+### Qualité, supervision et sauvegardes
+
+- `npm test` exécute 19 tests Vitest (mot de passe, sessions, validation, limiteur distribué, store multi-tenant). Le flux CI `.github/workflows/ci.yml` lance `lint`, `tsc`, `test` et `build` à chaque push.
+- `GET /api/health` vérifie la connexion Turso et renvoie `200`/`503` sans exposer la configuration : à brancher sur UptimeRobot, Better Stack ou une sonde équivalente.
+- Les erreurs serveur sont écrites en JSON structuré via `src/lib/logger.ts` (exploitable par un log drain Vercel). `@vercel/analytics` mesure le trafic depuis le navigateur.
+- Le limiteur de débit est partagé dans Turso (`loutigui_rate_limits`, CAS sur `version`) : la limite s'applique à toutes les instances serverless. En production, l'absence de `TURSO_DATABASE_URL` fait échouer la requête plutôt que de la laisser passer.
+- `npm run db:backup` exporte l'état Turso dans `backups/` (fichier ignoré par Git, contient des empreintes de mots de passe). Le workflow `.github/workflows/backup.yml` le lance chaque jour à 03:00 UTC et conserve l'artefact 30 jours. Définir les secrets GitHub `TURSO_DATABASE_URL` et `TURSO_AUTH_TOKEN` dans **Settings → Secrets and variables → Actions** (ils sont distincts des variables Vercel).
+
 ---
 
 ## 6. Forfaits
@@ -161,6 +169,9 @@ src/lib/auth.ts              sessions, rôles, sanitization, erreurs API
 src/lib/session.ts           cookie signé
 src/lib/password.ts          scrypt + politique mot de passe
 src/lib/validation.ts        schémas zod
+src/lib/rate-limit.ts        limiteur de débit partagé (Turso, CAS)
+src/lib/logger.ts            logs serveur structurés
+scripts/backup-turso.mjs     export sauvegarde de l'état Turso
 src/lib/payment-provider.ts  passerelle de paiement + webhook HMAC
 src/lib/notification-service.ts  SMS/email réels
 src/lib/reminder-engine.ts   envoi de relances partagé (cron + manuel)

@@ -7,10 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "db:import": "node scripts/import-json-to-turso.mjs"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:import": "node scripts/import-json-to-turso.mjs",
+    "db:backup": "node scripts/backup-turso.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
+    "@vercel/analytics": "^2.0.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.475.0",
@@ -32,6 +36,7 @@
     "eslint-config-next": "^15.5.29",
     "postcss": "^8.5.2",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^5.1.2"
   }
 }

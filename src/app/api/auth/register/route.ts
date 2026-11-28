@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const limit = rateLimit(rateLimitKey(request, "register"), 5, 60 * 60 * 1000);
+    const limit = await rateLimit(rateLimitKey(request, "register"), 5, 60 * 60 * 1000);
     if (!limit.allowed) {
       return NextResponse.json(
         { success: false, error: "Trop de créations de compte depuis cette adresse. Réessayez plus tard." },

@@ -276,7 +276,7 @@ export function LandingPage() {
         }`}
       >
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="group flex items-center gap-3" aria-label="LOUTIGUI – Accueil">
+          <Link href="/" className="group flex items-center gap-3">
             <span className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-700 shadow-lg shadow-emerald-500/25 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105">
               <Building2 className="h-5 w-5 text-slate-950" />
               <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-[var(--lp-bg)] bg-cyan-300" />
@@ -291,7 +291,7 @@ export function LandingPage() {
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-1 lg:flex" aria-label="Navigation principale">
+          <nav className="hidden items-center gap-1 lg:flex">
             {navLinks.map((link) => (
               <a
                 key={link.href}
@@ -876,7 +876,7 @@ export function LandingPage() {
                     }`}
                   >
                     {plan.featured ? (
-                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--lp-accent-solid)] px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--lp-accent-on)] shadow-lg shadow-[var(--lp-accent-shadow)]">
+                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--lp-accent-text)] px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--lp-accent-on)] shadow-lg shadow-[var(--lp-accent-shadow)]">
                         Le plus choisi
                       </span>
                     ) : null}
