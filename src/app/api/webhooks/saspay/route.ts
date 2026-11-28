@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { dataStore } from "@/lib/data-store";
+import { logError } from "@/lib/logger";
 import { isSaspayWebhookValid } from "@/lib/saspay";
 import { SubscriptionPlanType } from "@/types";
 
@@ -13,8 +14,8 @@ export async function POST(req: Request) {
     const secret = process.env.SASPAY_WEBHOOK_SECRET;
 
     if (!secret) {
-      console.error("[SasPay Webhook] SASPAY_WEBHOOK_SECRET is not configured.");
-      return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
+      logError("SASPAY_WEBHOOK_SECRET n'est pas configuré.");
+      return NextResponse.json({ error: "Webhook non configuré." }, { status: 500 });
     }
     if (!signature || !timestamp) {
       return NextResponse.json({ error: "Missing signature or timestamp header" }, { status: 401 });
@@ -23,22 +24,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
-    const payload = JSON.parse(rawBody);
-    const event = payload.event || payload.type;
-    const data = payload.data || {};
-
-    const isSuccess =
-      event === "checkout.session.completed" ||
-      event === "payment.success" ||
-      event === "payment.approved" ||
-      data.status === "SUCCESS" ||
-      data.status === "COMPLETED";
-
-    if (!isSuccess) {
+    const payload = JSON.parse(rawBody) as {
+      event?: string;
+      data?: Record<string, unknown> & { metadata?: Record<string, string> };
+      metadata?: Record<string, string>;
+    };
+    // Only the documented catalogue event may deliver a subscription.
+    // Redirects, delays and PENDING statuses never count as a payment.
+    if (payload.event !== "transaction.success") {
       return NextResponse.json({ received: true, ignored: true });
     }
 
-    const metadata = data.metadata || payload.metadata || {};
+    const data = payload.data || {};
+    const metadata = payload.metadata || data.metadata || {};
     const organizationId = String(metadata.organizationId || "");
     const plan = String(metadata.plan || "").toUpperCase() as SubscriptionPlanType;
     const paymentRef = String(data.id || data.transaction_id || "");
@@ -69,7 +67,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ received: true });
   } catch (err) {
-    console.error("[SasPay Webhook Error]", err);
-    return NextResponse.json({ error: "Webhook processing error" }, { status: 400 });
+    logError("Erreur de traitement du webhook SasPay", err);
+    return NextResponse.json({ error: "Erreur de traitement du webhook." }, { status: 400 });
   }
 }

@@ -70,6 +70,14 @@ npm run start   # serveur de production
 - Si la passerelle n'est pas configurée, l'API répond **503** avec un message explicite : jamais de succès factice.
 - Les abonnements utilisent SasPay : checkout réel, vérification du statut auprès de l'API, métadonnées signées contrôlées côté serveur, webhook `SASPAY_WEBHOOK_SECRET` idempotent.
 
+### Configuration SasPay (abonnements)
+
+1. Dans `app.saspay.me` → **Développeur**, générer une clé `sk_test_...` pour le développement et une clé `sk_live_...` pour la production. Elle est lue uniquement dans `SASPAY_API_KEY` côté serveur : jamais dans le navigateur, les logs ou le dépôt.
+2. Créer le webhook vers `https://<votre-domaine>/api/webhooks/saspay` avec l'événement `transaction.success`, puis copier immédiatement le `signing_secret` (affiché une seule fois) dans `SASPAY_WEBHOOK_SECRET`.
+3. Vérifier la configuration avec `GET https://api.saspay.me/api/v1/pricing/my-rates/` (appel authentifié en lecture seule) et déclencher l'événement `webhook.test` depuis le tableau de bord pour valider la signature.
+4. Le statut est revérifié auprès de `GET /checkout-sessions/{id}/status/` et `GET /payments/{id}/verify/`. Seul `SUCCESS` active l'abonnement ; une redirection ou un statut `PENDING` ne livrent rien. Ne jamais effectuer de paiement de test avec une clé live.
+5. `APP_URL` doit être l'URL publique canonique du site (sans `/` final). Toute modification de variable Vercel nécessite un redéploiement.
+
 ---
 
 ## 4. Relances
