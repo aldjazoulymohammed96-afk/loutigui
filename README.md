@@ -4,6 +4,8 @@ Plateforme multi-locataires pour propriétaires bailleurs, diaspora et agences i
 
 > **Aucun mode démonstration, aucune interface factice et aucun paiement simulé.** Chaque action est persistée et contrôlée côté serveur.
 
+**URL de production à utiliser : `https://loutigui.vercel.app`.** L'ancienne URL `https://loutigui-ws7b.vercel.app` est figée sur un déploiement sans base de données configurée : `/api/health` y répond `503`, ne l'utilisez pas.
+
 ---
 
 ## 1. Démarrage
