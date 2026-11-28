@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const parsed = registerSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: parsed.error.errors[0]?.message || "Requête invalide." },
+        { success: false, error: parsed.error.issues[0]?.message || "Requête invalide." },
         { status: 400 }
       );
     }
@@ -37,7 +37,10 @@ export async function POST(request: NextRequest) {
       phone: parsed.data.phone,
       email: parsed.data.email || undefined,
       password: parsed.data.password,
-      role: parsed.data.role,
+      // Self-registration always creates an owner; privileged roles are only
+      // granted later through /api/users by an organisation administrator.
+      role: "OWNER",
+      managementType: parsed.data.managementType,
     });
 
     await setSessionCookie(
@@ -45,6 +48,7 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
         organizationId: session.user.organizationId,
         role: session.user.role,
+        tokenVersion: session.user.sessionVersion ?? 0,
       })
     );
 

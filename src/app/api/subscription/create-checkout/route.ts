@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { dataStore } from "@/lib/data-store";
 import { createSaspayCheckoutSession, SUBSCRIPTION_PLANS } from "@/lib/saspay";
+import { saveCheckoutSession } from "@/lib/checkout-sessions";
 import { SubscriptionPlanType } from "@/types";
 import { errorResponse, getClientIp, requireAuth } from "@/lib/auth";
 
@@ -37,12 +38,30 @@ export async function POST(request: NextRequest) {
       returnUrl: finalReturnUrl,
     });
 
-    if (!sessionRes.success || !sessionRes.checkoutUrl) {
+    if (
+      !sessionRes.success ||
+      !sessionRes.checkoutUrl ||
+      !sessionRes.sessionId
+    ) {
       return NextResponse.json(
-        { success: false, error: sessionRes.error || "Impossible d'initier la session de paiement SasPay." },
+        {
+          success: false,
+          code: sessionRes.code || "SASPAY_CHECKOUT_FAILED",
+          error: sessionRes.error || "Impossible d'initier la session de paiement SasPay.",
+        },
         { status: 502 }
       );
     }
+
+    // Persist our own session -> (org, plan, amount) mapping before the customer
+    // leaves the site. The callback then never has to trust echoed metadata.
+    await saveCheckoutSession({
+      sessionId: sessionRes.sessionId,
+      organizationId: organization.id,
+      plan: validPlan,
+      amount: SUBSCRIPTION_PLANS[validPlan].amount,
+      currency: "XOF",
+    });
 
     await dataStore.audit({
       organizationId: organization.id,

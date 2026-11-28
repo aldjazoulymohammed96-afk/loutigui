@@ -55,9 +55,10 @@ npm run start   # serveur de production
 - **Mots de passe** : hachage `scrypt` avec sel aléatoire (`src/lib/password.ts`). Migration automatique des anciens mots de passe en clair au premier chargement. Aucun champ de credential n'est renvoyé par les API ni les exports.
 - **Validation runtime** : tous les payloads sont validés avec `zod` (`src/lib/validation.ts`).
 - **Rôles** : `OWNER`, `AGENCY_ADMIN`, `MANAGER`, `ACCOUNTANT`, `FIELD_AGENT` ; contrôle fin par route (organisation, encaissement, export).
-- **Rate limiting** : connexion, inscription, réinitialisation et vérification de quittance.
+- **Rate limiting** : connexion, inscription, réinitialisation, vérification de quittance et envoi manuel de relances. Les clés IP ne lisent que les en-têtes posés par la plateforme (`x-vercel-forwarded-for`).
 - **Réinitialisation de mot de passe** : jeton à usage unique, valable 1 heure, stocké haché, envoyé uniquement si une passerelle email est réellement configurée.
-- **En-têtes de sécurité** : `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS.
+- **Sessions révocables** : chaque cookie porte un `tokenVersion` comparé à celui de l'utilisateur ; un changement ou une réinitialisation du mot de passe invalide immédiatement les anciens cookies.
+- **En-têtes de sécurité** : `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS et `Content-Security-Policy-Report-Only` (observation avant application stricte).
 - **Journal d'audit** : connexions, créations/modifications/suppressions, encaissements, export, activation d'abonnement. Consultable dans Paramètres (administrateurs).
 
 ---
@@ -66,9 +67,9 @@ npm run start   # serveur de production
 
 - Le bouton « Payer maintenant » crée une **session de paiement réelle** chez le fournisseur configuré (`POST /api/payments/intent`) et redirige vers sa page sécurisée.
 - Aucune quittance n'est émise à cette étape. Seul le **webhook signé** `POST /api/webhooks/payments` (`x-payment-signature: sha256=…`, HMAC du corps brut) confirme la transaction et génère la quittance.
-- Les webhooks rejoués sont idempotents (référence de transaction unique).
+- Les webhooks rejoués sont idempotents : la référence de transaction est réservée de façon atomique dans Turso (`loutigui_processed_payments`) avant toute écriture métier.
 - Si la passerelle n'est pas configurée, l'API répond **503** avec un message explicite : jamais de succès factice.
-- Les abonnements utilisent SasPay : checkout réel, vérification du statut auprès de l'API, métadonnées signées contrôlées côté serveur, webhook `SASPAY_WEBHOOK_SECRET` idempotent.
+- Les abonnements utilisent SasPay : checkout réel, vérification du statut auprès de l'API, mapping `session_id → (organisation, forfait, montant)` enregistré côté serveur avant redirection, contrôle du montant/devise, webhook `SASPAY_WEBHOOK_SECRET` idempotent. Les détails d'erreur du fournisseur restent dans les logs serveur.
 
 ### Configuration SasPay (abonnements)
 

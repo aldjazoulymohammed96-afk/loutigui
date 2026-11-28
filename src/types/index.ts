@@ -78,6 +78,8 @@ export interface User {
   password?: string;
   role: UserRole;
   avatarUrl?: string;
+  /** Incremented on password change/reset to revoke older session cookies. */
+  sessionVersion?: number;
   createdAt: string;
 }
 

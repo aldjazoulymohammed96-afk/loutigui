@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const parsed = loginSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: parsed.error.errors[0]?.message || "Requête invalide." },
+        { success: false, error: parsed.error.issues[0]?.message || "Requête invalide." },
         { status: 400 }
       );
     }
@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
         organizationId: session.user.organizationId,
         role: session.user.role,
+        tokenVersion: session.user.sessionVersion ?? 0,
       })
     );
 

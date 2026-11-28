@@ -285,6 +285,9 @@ class DataStore {
 
   /** Refuse writes that would exceed the organisation's plan quota. */
   public assertUnitQuota(orgId: string): void {
+    if (this.getSubscriptionInfo(orgId).isExpired) {
+      throw new Error("Votre abonnement a expiré. Renouvelez-le pour continuer.");
+    }
     const org = this.getOrganization(orgId);
     const limits = planLimit(normalizePlan(org.subscriptionPlan));
     const count = this.getUnits(orgId).length;
@@ -296,6 +299,9 @@ class DataStore {
   }
 
   public assertUserQuota(orgId: string): void {
+    if (this.getSubscriptionInfo(orgId).isExpired) {
+      throw new Error("Votre abonnement a expiré. Renouvelez-le pour continuer.");
+    }
     const org = this.getOrganization(orgId);
     const limits = planLimit(normalizePlan(org.subscriptionPlan));
     const count = this.getUsers(orgId).length;
@@ -423,6 +429,7 @@ class DataStore {
       throw new Error("Le nouveau mot de passe doit contenir au moins 8 caractères.");
     }
     user.passwordHash = hashPassword(newPassword);
+    user.sessionVersion = (user.sessionVersion ?? 0) + 1;
     delete user.password;
     this.markChanged();
   }
@@ -450,6 +457,7 @@ class DataStore {
     const user = this.getUserById(record.userId);
     if (!user) throw new Error("Utilisateur introuvable.");
     user.passwordHash = hashPassword(newPassword);
+    user.sessionVersion = (user.sessionVersion ?? 0) + 1;
     delete user.password;
     record.usedAt = new Date().toISOString();
     this.markChanged();
@@ -462,6 +470,7 @@ class DataStore {
     email?: string;
     password: string;
     role?: UserRole;
+    managementType?: "OWNER" | "AGENCY" | "DIASPORA";
   }): { user: User; organization: Organization } {
     if (this.findUserByIdentifier(params.phone) || (params.email && this.findUserByIdentifier(params.email))) {
       throw new Error("Un compte existe déjà avec ce numéro ou cet email.");
@@ -487,7 +496,7 @@ class DataStore {
       address: "Abidjan, Côte d'Ivoire",
       isVirgin: true,
       onboardingCompleted: false,
-      managementType: role === "AGENCY_ADMIN" ? "AGENCY" : "OWNER",
+      managementType: params.managementType || (role === "AGENCY_ADMIN" ? "AGENCY" : "OWNER"),
       receiptSeq: 0,
       settings: {
         lateFeePercentage: 5,
@@ -556,6 +565,9 @@ class DataStore {
     }
   ): Organization {
     const org = this.getOrganization(orgId);
+    if (params.startEmpty && org.onboardingCompleted === true) {
+      throw new Error("Le nettoyage initial n'est autorisé qu'une seule fois.");
+    }
     org.name = params.orgName || org.name;
     org.countryCode = params.countryCode || "CI";
     org.defaultCurrency = params.defaultCurrency || "XOF";

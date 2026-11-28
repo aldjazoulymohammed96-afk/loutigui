@@ -1,6 +1,7 @@
 import { ReminderLog } from "@/types";
 import { dataStore } from "@/lib/data-store";
 import { NotificationChannel, sendNotification } from "@/lib/notification-service";
+import { normalizePlan, planLimit } from "@/lib/plans";
 import {
   buildReminderContent,
   ReminderSequence,
@@ -33,6 +34,29 @@ export async function sendReminder(input: SendReminderInput): Promise<SendRemind
   const org = await dataStore.getOrganization(input.organizationId);
   const tenant = await dataStore.getTenant(input.organizationId, installment.tenantId);
   const settings = org.settings || {};
+
+  if ((await dataStore.getSubscriptionInfo(input.organizationId)).isExpired) {
+    return {
+      success: false,
+      status: 403,
+      message: "Votre abonnement a expiré. Renouvelez-le pour envoyer des relances.",
+    };
+  }
+
+  if (input.channel === "SMS") {
+    const month = new Date().toISOString().slice(0, 7);
+    const used = (await dataStore.getReminders(input.organizationId)).filter(
+      (r) => r.channel === "SMS" && r.status !== "FAILED" && r.sentAt.slice(0, 7) === month
+    ).length;
+    const limit = planLimit(normalizePlan(org.subscriptionPlan)).smsPerMonth;
+    if (used >= limit) {
+      return {
+        success: false,
+        status: 403,
+        message: `Quota SMS du forfait épuisé (${used}/${limit} ce mois-ci). Passez à un forfait supérieur.`,
+      };
+    }
+  }
   const label = SEQUENCE_LABELS[input.sequence][settings.receiptLanguage === "en" ? "en" : "fr"];
 
   const enabled =

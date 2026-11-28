@@ -16,6 +16,7 @@ interface AuthContextType {
     email?: string;
     password?: string;
     role?: UserRole;
+    managementType?: "OWNER" | "AGENCY" | "DIASPORA";
     startEmpty?: boolean;
   }) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -93,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email?: string;
       password?: string;
       role?: UserRole;
+      managementType?: "OWNER" | "AGENCY" | "DIASPORA";
       startEmpty?: boolean;
     }): Promise<{ ok: boolean; error?: string }> => {
       try {

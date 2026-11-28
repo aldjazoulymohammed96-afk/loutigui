@@ -93,7 +93,7 @@ export default function SubscriptionPaywallModal() {
       const data = await res.json();
       if (data.success && data.checkoutUrl) {
         // Redirect to SasPay checkout page
-        window.location.href = data.checkoutUrl;
+        window.location.assign(data.checkoutUrl);
       } else {
         setError(data.error || "Impossible d'initier la session de paiement.");
         setLoading(false);

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { dataStore } from "@/lib/data-store";
 import { logError } from "@/lib/logger";
 import { isSaspayWebhookValid } from "@/lib/saspay";
+import { claimPaymentReference, releasePaymentReference } from "@/lib/processed-payments";
+import { getCheckoutSession } from "@/lib/checkout-sessions";
 import { SubscriptionPlanType } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -37,33 +39,58 @@ export async function POST(req: Request) {
 
     const data = payload.data || {};
     const metadata = payload.metadata || data.metadata || {};
-    const organizationId = String(metadata.organizationId || "");
-    const plan = String(metadata.plan || "").toUpperCase() as SubscriptionPlanType;
-    const paymentRef = String(data.id || data.transaction_id || "");
-
-    if (!organizationId || !await dataStore.getOrganizationById(organizationId)) {
-      return NextResponse.json({ error: "Organisation inconnue dans les métadonnées." }, { status: 400 });
-    }
-    if (plan !== "STARTER" && plan !== "PRO" && plan !== "AGENCE") {
-      return NextResponse.json({ error: "Forfait invalide dans les métadonnées." }, { status: 400 });
-    }
+    // Prefer the transaction id so the checkout callback and the webhook
+    // converge on the same idempotency key.
+    const paymentRef = String(data.transaction_id || data.id || "");
     if (!paymentRef) {
       return NextResponse.json({ error: "Référence de paiement manquante." }, { status: 400 });
     }
 
-    const org = await dataStore.getOrganization(organizationId);
-    if (org.lastPaymentId === paymentRef) {
+    // The record written before redirecting the customer is authoritative.
+    // Provider metadata is only an echo and must agree with it when present.
+    const sessionId = String(metadata.sessionId || data.session_id || "");
+    const localSession = sessionId ? await getCheckoutSession(sessionId) : undefined;
+    const echoedOrg = String(metadata.organizationId || "");
+    const organizationId = localSession?.organizationId || echoedOrg;
+    if (localSession && echoedOrg && echoedOrg !== localSession.organizationId) {
+      return NextResponse.json({ error: "Organisation incohérente avec la session de paiement." }, { status: 403 });
+    }
+    const plan = (localSession?.plan ||
+      String(metadata.plan || "").toUpperCase()) as SubscriptionPlanType;
+
+    if (!organizationId || !await dataStore.getOrganizationById(organizationId)) {
+      return NextResponse.json({ error: "Organisation inconnue pour ce paiement." }, { status: 400 });
+    }
+    if (plan !== "STARTER" && plan !== "PRO" && plan !== "AGENCE") {
+      return NextResponse.json({ error: "Forfait invalide pour ce paiement." }, { status: 400 });
+    }
+
+    // A UNIQUE row in Turso decides idempotence atomically: an old webhook
+    // replayed after a newer payment can no longer grant another 30 days.
+    const claimed = await claimPaymentReference({
+      reference: paymentRef,
+      scope: "subscription",
+      organizationId,
+      plan,
+    });
+    if (!claimed) {
       return NextResponse.json({ received: true, duplicate: true });
     }
 
-    await dataStore.activateSubscription(organizationId, plan, paymentRef, 30);
-    await dataStore.audit({
-      organizationId,
-      action: "SUBSCRIPTION_ACTIVATED",
-      entity: "Subscription",
-      entityId: paymentRef,
-      metadata: { plan, source: "saspay_webhook" },
-    });
+    try {
+      await dataStore.activateSubscription(organizationId, plan, paymentRef, 30);
+      await dataStore.audit({
+        organizationId,
+        action: "SUBSCRIPTION_ACTIVATED",
+        entity: "Subscription",
+        entityId: paymentRef,
+        metadata: { plan, source: "saspay_webhook" },
+      });
+    } catch (error) {
+      // Let a legitimate retry through if the business write failed.
+      await releasePaymentReference(paymentRef, "subscription");
+      throw error;
+    }
 
     return NextResponse.json({ received: true });
   } catch (err) {

@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const parsed = maintenanceCreateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: parsed.error.errors[0]?.message || "Données invalides." },
+        { success: false, error: parsed.error.issues[0]?.message || "Données invalides." },
         { status: 400 }
       );
     }
@@ -79,7 +79,7 @@ export async function PATCH(request: NextRequest) {
     const parsed = maintenanceUpdateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: parsed.error.errors[0]?.message || "Données invalides." },
+        { success: false, error: parsed.error.issues[0]?.message || "Données invalides." },
         { status: 400 }
       );
     }

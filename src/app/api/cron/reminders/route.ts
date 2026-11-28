@@ -1,5 +1,7 @@
+import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { dataStore } from "@/lib/data-store";
+import { acquireLock, releaseLock } from "@/lib/distributed-lock";
 import { alreadyReminded, sendReminder } from "@/lib/reminder-engine";
 import {
   getNotificationStatus,
@@ -61,6 +63,19 @@ async function sendDailyDigest(org: Organization, appUrl: string): Promise<strin
 }
 
 async function processOrganization(orgId: string, appUrl: string) {
+  // An expired subscription must not keep consuming real SMS/email credits.
+  if ((await dataStore.getSubscriptionInfo(orgId)).isExpired) {
+    return {
+      organizationId: orgId,
+      generated: 0,
+      processed: 0,
+      sent: 0,
+      failed: 0,
+      digest: "abonnement expiré",
+      skipped: true,
+    };
+  }
+
   const now = new Date();
   // 1. Billing: make sure this month's échéances exist.
   const generated = await dataStore.generateMonthlyInstallments(orgId, now.getFullYear(), now.getMonth() + 1);
@@ -133,10 +148,16 @@ export async function POST(request: NextRequest) {
   return handle(request);
 }
 
+function authorizationMatches(header: string | null, secret: string): boolean {
+  const provided = Buffer.from(header || "");
+  const expected = Buffer.from(`Bearer ${secret}`);
+  return provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
+}
+
 async function handle(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
   const authorization = request.headers.get("authorization");
-  if (secret && authorization !== `Bearer ${secret}`) {
+  if (secret && !authorizationMatches(authorization, secret)) {
     return NextResponse.json({ success: false, error: "Non autorisé." }, { status: 401 });
   }
   if (!secret && process.env.NODE_ENV === "production") {
@@ -146,33 +167,44 @@ async function handle(request: NextRequest) {
     );
   }
 
-  const appUrl = process.env.APP_URL || new URL(request.url).origin;
-  const organizations = await dataStore.getOrganizations();
-  const results = [];
-
-  for (const org of organizations) {
-    try {
-      results.push(await processOrganization(org.id, appUrl));
-    } catch (error) {
-      results.push({
-        organizationId: org.id,
-        error: error instanceof Error ? error.message : "Erreur inconnue",
-      });
-    }
+  // GET is retained because Vercel Cron invokes endpoints with GET. A short
+  // distributed lock prevents overlapping runs from sending duplicate reminders.
+  const lockName = "cron:reminders";
+  if (!(await acquireLock(lockName, 300))) {
+    return NextResponse.json({ success: false, error: "Une exécution est déjà en cours." }, { status: 409 });
   }
 
-  const totals = results.reduce(
-    (acc, r) => ({
-      generated: acc.generated + ("generated" in r ? Number(r.generated) || 0 : 0),
-      sent: acc.sent + ("sent" in r ? Number(r.sent) || 0 : 0),
-      failed: acc.failed + ("failed" in r ? Number(r.failed) || 0 : 0),
-    }),
-    { generated: 0, sent: 0, failed: 0 }
-  );
+  try {
+    const appUrl = process.env.APP_URL || new URL(request.url).origin;
+    const organizations = await dataStore.getOrganizations();
+    const results = [];
 
-  return NextResponse.json({
-    success: true,
-    message: `${organizations.length} organisation(s) traitée(s) : ${totals.generated} échéance(s) créée(s), ${totals.sent} relance(s) envoyée(s), ${totals.failed} échec(s).`,
-    data: { organizations: organizations.length, totals, results },
-  });
+    for (const org of organizations) {
+      try {
+        results.push(await processOrganization(org.id, appUrl));
+      } catch (error) {
+        results.push({
+          organizationId: org.id,
+          error: error instanceof Error ? error.message : "Erreur inconnue",
+        });
+      }
+    }
+
+    const totals = results.reduce(
+      (acc, r) => ({
+        generated: acc.generated + ("generated" in r ? Number(r.generated) || 0 : 0),
+        sent: acc.sent + ("sent" in r ? Number(r.sent) || 0 : 0),
+        failed: acc.failed + ("failed" in r ? Number(r.failed) || 0 : 0),
+      }),
+      { generated: 0, sent: 0, failed: 0 }
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: `${organizations.length} organisation(s) traitée(s) : ${totals.generated} échéance(s) créée(s), ${totals.sent} relance(s) envoyée(s), ${totals.failed} échec(s).`,
+      data: { organizations: organizations.length, totals, results },
+    });
+  } finally {
+    await releaseLock(lockName);
+  }
 }

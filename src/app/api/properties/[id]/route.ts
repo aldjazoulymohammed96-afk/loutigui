@@ -32,7 +32,7 @@ export async function PATCH(
       const parsed = buildingUpdateSchema.safeParse(body);
       if (!parsed.success) {
         return NextResponse.json(
-          { success: false, error: parsed.error.errors[0]?.message || "Données invalides." },
+          { success: false, error: parsed.error.issues[0]?.message || "Données invalides." },
           { status: 400 }
         );
       }
@@ -52,7 +52,7 @@ export async function PATCH(
     const parsed = unitUpdateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: parsed.error.errors[0]?.message || "Données invalides." },
+        { success: false, error: parsed.error.issues[0]?.message || "Données invalides." },
         { status: 400 }
       );
     }

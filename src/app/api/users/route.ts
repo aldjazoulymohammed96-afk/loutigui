@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const parsed = userCreateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: parsed.error.errors[0]?.message || "Données invalides." },
+        { success: false, error: parsed.error.issues[0]?.message || "Données invalides." },
         { status: 400 }
       );
     }

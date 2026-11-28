@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { AuthThemeToggle } from "@/components/AuthThemeToggle";
-import { UserRole } from "@/types";
 import {
   Building2,
   ArrowRight,
@@ -25,7 +24,6 @@ export default function SignupPage() {
   const [phone, setPhone] = useState("+225 ");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("OWNER");
   const [profile, setProfile] = useState<"OWNER" | "DIASPORA" | "AGENCY">("OWNER");
   const [startEmpty, setStartEmpty] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +40,7 @@ export default function SignupPage() {
         phone,
         email,
         password,
-        role,
+        managementType: profile,
         startEmpty,
       });
 
@@ -60,7 +58,6 @@ export default function SignupPage() {
 
   const profileButton = (
     value: "OWNER" | "DIASPORA" | "AGENCY",
-    nextRole: UserRole,
     title: string,
     subtitle: string
   ) => {
@@ -68,10 +65,8 @@ export default function SignupPage() {
     return (
       <button
         type="button"
-        onClick={() => {
-          setProfile(value);
-          setRole(nextRole);
-        }}
+        aria-pressed={active}
+        onClick={() => setProfile(value)}
         className={`rounded-xl border p-2.5 text-center transition ${
           active
             ? "border-[var(--lp-accent-solid)] bg-[var(--lp-accent-soft)] font-bold text-[var(--lp-accent-text)]"
@@ -85,7 +80,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="auth-page relative flex min-h-screen flex-col items-center justify-center bg-[var(--lp-bg)] p-4 text-[var(--lp-text)]">
+    <main className="auth-page relative flex min-h-screen flex-col items-center justify-center bg-[var(--lp-bg)] p-4 text-[var(--lp-text)]">
       <AuthThemeToggle />
       <div className="w-full max-w-lg space-y-6 rounded-3xl border border-[var(--lp-border)] bg-[var(--lp-bg-elevated)] p-6 shadow-[var(--lp-window-shadow)] sm:p-8">
         {/* Brand */}
@@ -115,8 +110,10 @@ export default function SignupPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
-            <label className={labelClass}>Nom et Prénom ou Raison Sociale</label>
+            <label htmlFor="signup-name" className={labelClass}>Nom et Prénom ou Raison Sociale</label>
             <input
+              id="signup-name"
+              autoComplete="name"
               type="text"
               required
               value={name}
@@ -128,8 +125,10 @@ export default function SignupPage() {
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Numéro WhatsApp (avec indicatif)</label>
+              <label htmlFor="signup-phone" className={labelClass}>Numéro WhatsApp (avec indicatif)</label>
               <input
+                id="signup-phone"
+                autoComplete="tel"
                 type="text"
                 required
                 value={phone}
@@ -140,8 +139,10 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label className={labelClass}>Email</label>
+              <label htmlFor="signup-email" className={labelClass}>Email</label>
               <input
+                id="signup-email"
+                autoComplete="email"
                 type="email"
                 required
                 value={email}
@@ -153,8 +154,10 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label className={labelClass}>Mot de passe</label>
+            <label htmlFor="signup-password" className={labelClass}>Mot de passe</label>
             <input
+              id="signup-password"
+              autoComplete="new-password"
               type="password"
               required
               minLength={8}
@@ -167,13 +170,13 @@ export default function SignupPage() {
 
           {/* Profile Role Selector */}
           <div>
-            <label className="mb-1.5 block font-bold text-[var(--lp-text)]">
+            <p id="signup-profile-label" className="mb-1.5 block font-bold text-[var(--lp-text)]">
               Votre Profil de Gestion
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {profileButton("OWNER", "OWNER", "Propriétaire", "Gère en direct")}
-              {profileButton("DIASPORA", "OWNER", "Diaspora", "À l'étranger")}
-              {profileButton("AGENCY", "AGENCY_ADMIN", "Agence", "Gestion de tiers")}
+            </p>
+            <div role="group" aria-labelledby="signup-profile-label" className="grid grid-cols-3 gap-2">
+              {profileButton("OWNER", "Propriétaire", "Gère en direct")}
+              {profileButton("DIASPORA", "Diaspora", "À l'étranger")}
+              {profileButton("AGENCY", "Agence", "Gestion de tiers")}
             </div>
           </div>
 
@@ -181,6 +184,7 @@ export default function SignupPage() {
           <div className="space-y-1 rounded-xl border border-[var(--lp-border)] bg-[var(--lp-bg-inset)] p-3">
             <label className="flex cursor-pointer items-start gap-2.5">
               <input
+                id="signup-start-empty"
                 type="checkbox"
                 checked={startEmpty}
                 onChange={(e) => setStartEmpty(e.target.checked)}
@@ -224,6 +228,6 @@ export default function SignupPage() {
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

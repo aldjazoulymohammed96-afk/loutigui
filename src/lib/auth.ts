@@ -26,6 +26,7 @@ export async function getAuth(): Promise<AuthContext | null> {
 
   const user = await dataStore.getUserById(payload.userId);
   if (!user) return null;
+  if ((payload.tokenVersion ?? 0) !== (user.sessionVersion ?? 0)) return null;
 
   const organization = await dataStore.getOrganizationById(user.organizationId);
   if (!organization) return null;
@@ -108,7 +109,9 @@ export function errorResponse(error: unknown): NextResponse {
 }
 
 export function getClientIp(request: Request): string | undefined {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0]?.trim();
-  return request.headers.get("x-real-ip") || undefined;
+  // Vercel overwrites this header; never trust a client-supplied XFF.
+  const platformIp =
+    request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip")?.trim();
+  return platformIp || undefined;
 }

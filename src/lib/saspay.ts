@@ -1,6 +1,16 @@
 import crypto from "crypto";
+import { logError } from "@/lib/logger";
 
 const SASPAY_BASE_URL = "https://api.saspay.me/api/v1";
+
+/**
+ * Provider identifiers are pasted into URL paths. Reject anything that is not
+ * a plain opaque token so a `../` cannot normalise the request to another
+ * endpoint carrying our API key. Callers must also encodeURIComponent().
+ */
+export function isValidProviderId(value: string): boolean {
+  return /^[A-Za-z0-9_-]{1,128}$/.test(value);
+}
 
 export interface PlanConfig {
   id: "STARTER" | "PRO" | "AGENCE";
@@ -78,6 +88,7 @@ export async function createSaspayCheckoutSession(params: {
   success: boolean;
   sessionId?: string;
   checkoutUrl?: string;
+  code?: string;
   error?: string;
 }> {
   const plan = SUBSCRIPTION_PLANS[params.planId];
@@ -118,22 +129,31 @@ export async function createSaspayCheckoutSession(params: {
 
     const data = (await res.json()) as SaspayResponse;
 
-    if (res.ok && data.success && data.data?.checkout_url) {
+    if (res.ok && data.success && data.data?.checkout_url && data.data.id) {
       return {
         success: true,
         sessionId: data.data.id,
         checkoutUrl: data.data.checkout_url,
       };
-    } else {
-      const errMsg =
-        data.error?.message ||
-        (typeof data === "object" ? JSON.stringify(data) : "Erreur lors de la création de la session SasPay.");
-      return { success: false, error: errMsg };
     }
-  } catch (err) {
+
+    // Keep provider details in the server logs; the browser only sees a
+    // stable code and a generic message.
+    logError("SasPay: création de session refusée", undefined, {
+      status: res.status,
+      providerMessage: data.error?.message,
+    });
     return {
       success: false,
-      error: err instanceof Error ? err.message : "Erreur de connexion avec SasPay.",
+      code: "SASPAY_CHECKOUT_FAILED",
+      error: "Le paiement n'a pas pu être initié. Veuillez réessayer.",
+    };
+  } catch (err) {
+    logError("SasPay: erreur de connexion lors de la création de session", err);
+    return {
+      success: false,
+      code: "SASPAY_UNAVAILABLE",
+      error: "Le service de paiement est momentanément indisponible.",
     };
   }
 }
@@ -160,15 +180,19 @@ export async function getSaspayCheckoutStatus(sessionId: string): Promise<{
   status?: string; // PENDING, SUCCESS, FAILED, CANCELLED
   transactionId?: string;
   raw?: SaspayResponse["data"];
+  code?: string;
   error?: string;
 }> {
+  if (!isValidProviderId(sessionId)) {
+    return { success: false, error: "Identifiant de session de paiement invalide." };
+  }
   const apiKey = getApiKey();
   if (!apiKey) {
     return { success: false, error: "Configuration SasPay manquante (SASPAY_API_KEY)." };
   }
 
   try {
-    const res = await fetch(`${SASPAY_BASE_URL}/checkout-sessions/${sessionId}/status/`, {
+    const res = await fetch(`${SASPAY_BASE_URL}/checkout-sessions/${encodeURIComponent(sessionId)}/status/`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -187,12 +211,22 @@ export async function getSaspayCheckoutStatus(sessionId: string): Promise<{
         raw: data.data,
       };
     } else {
-      return { success: false, error: data.error?.message || "Impossible de vérifier le statut SasPay." };
+      logError("SasPay: vérification de session refusée", undefined, {
+        status: res.status,
+        providerMessage: data.error?.message,
+      });
+      return {
+        success: false,
+        code: "SASPAY_STATUS_CHECK_FAILED",
+        error: "Impossible de vérifier le statut du paiement pour le moment.",
+      };
     }
   } catch (err) {
+    logError("SasPay: erreur de connexion lors de la vérification", err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : "Erreur de communication avec SasPay.",
+      code: "SASPAY_UNAVAILABLE",
+      error: "Le service de paiement est momentanément indisponible.",
     };
   }
 }
@@ -205,15 +239,19 @@ export async function verifySaspayPayment(paymentId: string): Promise<{
   status?: string; // SUCCESS, PENDING, FAILED
   netAmount?: string;
   currency?: string;
+  code?: string;
   error?: string;
 }> {
+  if (!isValidProviderId(paymentId)) {
+    return { success: false, error: "Identifiant de paiement invalide." };
+  }
   const apiKey = getApiKey();
   if (!apiKey) {
     return { success: false, error: "Configuration SasPay manquante (SASPAY_API_KEY)." };
   }
 
   try {
-    const res = await fetch(`${SASPAY_BASE_URL}/payments/${paymentId}/verify/`, {
+    const res = await fetch(`${SASPAY_BASE_URL}/payments/${encodeURIComponent(paymentId)}/verify/`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -232,12 +270,22 @@ export async function verifySaspayPayment(paymentId: string): Promise<{
         currency: data.data.currency,
       };
     } else {
-      return { success: false, error: data.error?.message || "Échec de vérification du paiement." };
+      logError("SasPay: vérification de paiement refusée", undefined, {
+        status: res.status,
+        providerMessage: data.error?.message,
+      });
+      return {
+        success: false,
+        code: "SASPAY_VERIFY_FAILED",
+        error: "La vérification du paiement a échoué. Veuillez réessayer.",
+      };
     }
   } catch (err) {
+    logError("SasPay: erreur de connexion lors de la vérification du paiement", err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : "Erreur de connexion à SasPay.",
+      code: "SASPAY_UNAVAILABLE",
+      error: "Le service de paiement est momentanément indisponible.",
     };
   }
 }

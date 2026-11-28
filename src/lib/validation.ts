@@ -50,6 +50,7 @@ export const registerSchema = z.object({
   email: emailSchema.optional().or(z.literal("")),
   password: z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères.").max(200),
   role: roleSchema.optional(),
+  managementType: z.enum(["OWNER", "AGENCY", "DIASPORA"]).optional(),
   startEmpty: z.boolean().optional(),
 });
 

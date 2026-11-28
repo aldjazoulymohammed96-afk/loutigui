@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { dataStore } from "@/lib/data-store";
 import { Payment } from "@/types";
 import { verifyPaymentWebhook } from "@/lib/payment-provider";
+import { claimPaymentReference, releasePaymentReference } from "@/lib/processed-payments";
+import { logError } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -68,15 +70,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Référence de transaction manquante." }, { status: 400 });
   }
 
-  // Idempotency: never record the same provider transaction twice.
-  const already = (await dataStore.getPayments(organizationId))
-    .some((p) => p.externalTransactionRef === transactionId);
-  if (already) {
+  // Atomic idempotency: a UNIQUE row in Turso decides which concurrent
+  // serverless invocation records the payment.
+  const claimed = await claimPaymentReference({
+    reference: transactionId,
+    scope: "rent",
+    organizationId,
+  });
+  if (!claimed) {
     return NextResponse.json({ received: true, duplicate: true });
   }
 
   const installment = await dataStore.getInstallment(organizationId, installmentId);
   if (!installment) {
+    await releasePaymentReference(transactionId, "rent");
     return NextResponse.json({ error: "Échéance introuvable." }, { status: 404 });
   }
 
@@ -102,9 +109,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ received: true, paymentId: result.payment.id });
   } catch (error) {
-    console.error("[Payment webhook]", error);
+    await releasePaymentReference(transactionId, "rent").catch(() => undefined);
+    logError("Erreur de traitement du webhook de paiement", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur de traitement." },
+      { error: "Erreur de traitement du paiement." },
       { status: 500 }
     );
   }

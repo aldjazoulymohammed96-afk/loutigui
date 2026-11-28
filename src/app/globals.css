@@ -39,9 +39,9 @@ body {
   --lp-border: rgba(15, 23, 42, 0.1);
   --lp-border-strong: rgba(15, 23, 42, 0.18);
   --lp-hover-bg: rgba(15, 23, 42, 0.04);
-  --lp-accent: #059669;
-  --lp-accent-solid: #059669;
-  --lp-accent-solid-hover: #047857;
+  --lp-accent: #047857;
+  --lp-accent-solid: #047857;
+  --lp-accent-solid-hover: #065f46;
   --lp-accent-on: #ffffff;
   --lp-accent-text: #047857;
   --lp-accent-soft: rgba(5, 150, 105, 0.09);
@@ -63,7 +63,7 @@ body {
   --lp-range-track: rgba(15, 23, 42, 0.12);
   --lp-range-thumb: #059669;
   --lp-range-ring: rgba(5, 150, 105, 0.4);
-  --lp-accent-gradient: linear-gradient(135deg, #059669, #0d9488);
+  --lp-accent-gradient: linear-gradient(135deg, #047857, #0f766e);
   --lp-error-bg: #fff1f2;
   --lp-error-border: rgba(225, 29, 72, 0.25);
   --lp-error-text: #be123c;

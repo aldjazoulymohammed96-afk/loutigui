@@ -48,7 +48,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="auth-page relative flex min-h-screen flex-col items-center justify-center bg-[var(--lp-bg)] p-4 text-[var(--lp-text)]">
+    <main className="auth-page relative flex min-h-screen flex-col items-center justify-center bg-[var(--lp-bg)] p-4 text-[var(--lp-text)]">
       <AuthThemeToggle />
       <div className="w-full max-w-md space-y-6 rounded-3xl border border-[var(--lp-border)] bg-[var(--lp-bg-elevated)] p-6 shadow-[var(--lp-window-shadow)] sm:p-8">
         {/* Brand */}
@@ -78,11 +78,13 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
-            <label className="mb-1 block font-bold text-[var(--lp-text)]">
+            <label htmlFor="login-identifier" className="mb-1 block font-bold text-[var(--lp-text)]">
               Numéro de Téléphone (WhatsApp) ou Email
             </label>
             <div className="relative">
               <input
+                id="login-identifier"
+                autoComplete="username"
                 type="text"
                 required
                 value={identifier}
@@ -102,7 +104,7 @@ export default function LoginPage() {
 
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <label className="font-bold text-[var(--lp-text)]">Mot de passe</label>
+              <label htmlFor="login-password" className="font-bold text-[var(--lp-text)]">Mot de passe</label>
               <Link
                 href="/forgot-password"
                 className="text-[var(--lp-accent-text)] hover:underline"
@@ -112,6 +114,8 @@ export default function LoginPage() {
             </div>
             <div className="relative">
               <input
+                id="login-password"
+                autoComplete="current-password"
                 type="password"
                 required
                 value={password}
@@ -143,6 +147,6 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

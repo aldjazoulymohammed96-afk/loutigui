@@ -12,6 +12,8 @@ export interface SessionPayload {
   organizationId: string;
   role: UserRole;
   exp: number;
+  /** Compared with the user's sessionVersion so password changes revoke cookies. */
+  tokenVersion?: number;
 }
 
 let cachedSecret: string | null = null;
@@ -94,11 +96,13 @@ export function buildSessionPayload(input: {
   userId: string;
   organizationId: string;
   role: UserRole;
+  tokenVersion?: number;
 }): SessionPayload {
   return {
     userId: input.userId,
     organizationId: input.organizationId,
     role: input.role,
+    tokenVersion: input.tokenVersion ?? 0,
     exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
   };
 }

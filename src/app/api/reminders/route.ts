@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { dataStore } from "@/lib/data-store";
 import { sendReminder } from "@/lib/reminder-engine";
 import { reminderCreateSchema } from "@/lib/validation";
-import { errorResponse, getClientIp, requireAuth } from "@/lib/auth";
+import { canManageMoney, errorResponse, getClientIp, requireAuth } from "@/lib/auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -19,11 +20,29 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const { user, organization } = await requireAuth();
+    if (!canManageMoney(user.role)) {
+      return NextResponse.json(
+        { success: false, error: "Votre rôle ne permet pas d'envoyer des relances." },
+        { status: 403 }
+      );
+    }
+    const limit = await rateLimit(
+      `reminders:${organization.id}:${user.id}`,
+      20,
+      10 * 60 * 1000
+    );
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { success: false, error: "Trop de relances envoyées. Réessayez plus tard." },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } }
+      );
+    }
+
     const body = await request.json().catch(() => null);
     const parsed = reminderCreateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: parsed.error.errors[0]?.message || "Données invalides." },
+        { success: false, error: parsed.error.issues[0]?.message || "Données invalides." },
         { status: 400 }
       );
     }

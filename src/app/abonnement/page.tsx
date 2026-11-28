@@ -95,7 +95,7 @@ export default function AbonnementPage() {
 
       const data = await res.json();
       if (data.success && data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
+        window.location.assign(data.checkoutUrl);
       } else {
         setError(data.error || "Impossible d'initier le paiement SasPay.");
         setCheckoutLoading(null);

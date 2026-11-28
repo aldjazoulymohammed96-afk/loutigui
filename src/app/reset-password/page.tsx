@@ -49,7 +49,7 @@ function ResetPasswordForm() {
     "w-full rounded-xl border border-[var(--lp-border)] bg-[var(--lp-bg-inset)] py-3 pl-10 pr-4 text-[var(--lp-text)] placeholder:text-[var(--lp-text-subtle)] focus:outline-none focus:ring-2 focus:ring-emerald-500";
 
   return (
-    <div className="auth-page relative flex min-h-screen flex-col items-center justify-center bg-[var(--lp-bg)] p-4 text-[var(--lp-text)]">
+    <main className="auth-page relative flex min-h-screen flex-col items-center justify-center bg-[var(--lp-bg)] p-4 text-[var(--lp-text)]">
       <AuthThemeToggle />
       <div className="w-full max-w-md space-y-6 rounded-3xl border border-[var(--lp-border)] bg-[var(--lp-bg-elevated)] p-6 shadow-[var(--lp-window-shadow)] sm:p-8">
         <div className="space-y-1 text-center">
@@ -87,11 +87,13 @@ function ResetPasswordForm() {
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
-            <label className="mb-1 block font-bold text-[var(--lp-text)]">
+            <label htmlFor="reset-password" className="mb-1 block font-bold text-[var(--lp-text)]">
               Nouveau mot de passe
             </label>
             <div className="relative">
               <input
+                id="reset-password"
+                autoComplete="new-password"
                 type="password"
                 required
                 minLength={8}
@@ -103,9 +105,11 @@ function ResetPasswordForm() {
             </div>
           </div>
           <div>
-            <label className="mb-1 block font-bold text-[var(--lp-text)]">Confirmation</label>
+            <label htmlFor="reset-confirm" className="mb-1 block font-bold text-[var(--lp-text)]">Confirmation</label>
             <div className="relative">
               <input
+                id="reset-confirm"
+                autoComplete="new-password"
                 type="password"
                 required
                 minLength={8}
@@ -136,7 +140,7 @@ function ResetPasswordForm() {
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }
 

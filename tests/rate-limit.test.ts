@@ -33,11 +33,12 @@ describe("distributed rate limit", () => {
   });
 
   it("lets requests through again after the window expires", async () => {
-    await rateLimit("short:window", 1, 40);
-    expect((await rateLimit("short:window", 1, 40)).allowed).toBe(false);
+    // Use a generous window so CI latency cannot expire it mid-assertion.
+    await rateLimit("short:window", 1, 500);
+    expect((await rateLimit("short:window", 1, 500)).allowed).toBe(false);
 
-    await new Promise((resolve) => setTimeout(resolve, 60));
-    expect((await rateLimit("short:window", 1, 40)).allowed).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect((await rateLimit("short:window", 1, 500)).allowed).toBe(true);
   });
 
   it("fails closed in production when libSQL is not configured", async () => {

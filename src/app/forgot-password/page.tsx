@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="auth-page relative flex min-h-screen flex-col items-center justify-center bg-[var(--lp-bg)] p-4 text-[var(--lp-text)]">
+    <main className="auth-page relative flex min-h-screen flex-col items-center justify-center bg-[var(--lp-bg)] p-4 text-[var(--lp-text)]">
       <AuthThemeToggle />
       <div className="w-full max-w-md space-y-6 rounded-3xl border border-[var(--lp-border)] bg-[var(--lp-bg-elevated)] p-6 shadow-[var(--lp-window-shadow)] sm:p-8">
         <div className="space-y-1 text-center">
@@ -70,11 +70,13 @@ export default function ForgotPasswordPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
-            <label className="mb-1 block font-bold text-[var(--lp-text)]">
+            <label htmlFor="forgot-identifier" className="mb-1 block font-bold text-[var(--lp-text)]">
               Email ou téléphone
             </label>
             <div className="relative">
               <input
+                id="forgot-identifier"
+                autoComplete="username"
                 type="text"
                 required
                 value={identifier}
@@ -105,6 +107,6 @@ export default function ForgotPasswordPage() {
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

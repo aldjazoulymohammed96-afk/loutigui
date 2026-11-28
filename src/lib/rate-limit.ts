@@ -1,4 +1,4 @@
-import type { Client } from "@libsql/client";
+import { getLibsqlClient, usesTurso } from "@/lib/libsql-runtime";
 
 /**
  * Distributed sliding-window rate limiter backed by libSQL/Turso.
@@ -23,54 +23,27 @@ export interface RateLimitResult {
 
 const memoryBuckets = new Map<string, Bucket>();
 const MAX_CAS_ATTEMPTS = 5;
-let clientPromise: Promise<Client> | null = null;
+let tableReady: Promise<void> | null = null;
 
-function databaseUrl(): string | undefined {
-  const primary = process.env.TURSO_DATABASE_URL?.trim();
-  if (primary) return primary;
-
-  const legacy = process.env.DATABASE_URL?.trim();
-  if (!legacy) return undefined;
-  if (/^postgres(ql)?:\/\//i.test(legacy)) {
-    throw new Error(
-      "DATABASE_URL pointe vers PostgreSQL. Utilisez TURSO_DATABASE_URL avec une URL libSQL (libsql://…)."
-    );
-  }
-  return legacy;
-}
-
-function usesTurso(): boolean {
-  return Boolean(databaseUrl());
-}
-
-async function getClient(): Promise<Client> {
-  if (clientPromise) return clientPromise;
-
-  clientPromise = (async () => {
-    const url = databaseUrl();
-    if (!url) throw new Error("TURSO_DATABASE_URL n'est pas configuré.");
-
-    const { createClient } = await import("@libsql/client");
-    const client = createClient({
-      url,
-      authToken: process.env.TURSO_AUTH_TOKEN?.trim() || undefined,
+async function getClient() {
+  if (!tableReady) {
+    tableReady = (async () => {
+      const client = await getLibsqlClient();
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS loutigui_rate_limits (
+          key TEXT PRIMARY KEY,
+          hits TEXT NOT NULL,
+          version INTEGER NOT NULL DEFAULT 0,
+          updated_at INTEGER NOT NULL
+        )
+      `);
+    })().catch((error) => {
+      tableReady = null;
+      throw error;
     });
-
-    await client.execute(`
-      CREATE TABLE IF NOT EXISTS loutigui_rate_limits (
-        key TEXT PRIMARY KEY,
-        hits TEXT NOT NULL,
-        version INTEGER NOT NULL DEFAULT 0,
-        updated_at INTEGER NOT NULL
-      )
-    `);
-    return client;
-  })().catch((error) => {
-    clientPromise = null;
-    throw error;
-  });
-
-  return clientPromise;
+  }
+  await tableReady;
+  return getLibsqlClient();
 }
 
 function memoryLimit(key: string, limit: number, windowMs: number, now: number): RateLimitResult {
@@ -162,8 +135,15 @@ export async function rateLimit(
   throw new Error("Limiteur de débit indisponible.");
 }
 
+/**
+ * Only trust IPs set by the hosting platform. On Vercel,
+ * `x-vercel-forwarded-for` is written by the edge network; a plain
+ * `x-forwarded-for` sent by a client must not be allowed to reset the bucket.
+ */
 export function rateLimitKey(request: Request, scope: string): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
+  const platformIp =
+    request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip")?.trim();
+  const ip = platformIp || "unknown";
   return `${scope}:${ip}`;
 }
