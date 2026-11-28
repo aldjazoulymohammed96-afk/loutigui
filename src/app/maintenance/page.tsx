@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { MaintenanceTicket, Unit } from "@/types";
 import { useApp } from "@/context/AppContext";
 import { formatCurrency } from "@/lib/utils";
-import { useApiQuery } from "@/lib/api-client";
+import { readApiJson, useApiQuery } from "@/lib/api-client";
 import { Wrench, Plus, CheckCircle2, X } from "lucide-react";
 
 export default function MaintenancePage() {
@@ -53,7 +53,7 @@ export default function MaintenancePage() {
           vendorName,
         }),
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (data.success) {
         showToast("Ticket d'incident créé avec succès !", "success");
         setIsAddOpen(false);
@@ -73,7 +73,7 @@ export default function MaintenancePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status }),
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (data.success) {
         showToast("Statut de l'intervention mis à jour !", "success");
         triggerRefresh();

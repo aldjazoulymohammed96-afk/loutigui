@@ -12,7 +12,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { SubscriptionInfo, SubscriptionPlanType } from "@/types";
-import { useApiQuery } from "@/lib/api-client";
+import { readApiJson, useApiQuery } from "@/lib/api-client";
 
 interface PlanConfig {
   id: SubscriptionPlanType;
@@ -93,7 +93,7 @@ export default function AbonnementPage() {
         body: JSON.stringify({ plan: planId }),
       });
 
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (data.success && data.checkoutUrl) {
         window.location.assign(data.checkoutUrl);
       } else {

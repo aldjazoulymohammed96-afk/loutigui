@@ -40,6 +40,28 @@ export function clearQueryCache(prefix?: string): void {
   }
 }
 
+/**
+ * Read an API response as JSON without crashing the UI when the platform
+ * answers with an HTML error page (WAF 403, 503, expired deployment...).
+ * Returns a stable French message instead of "Unexpected token '<'".
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- payloads are validated per API route
+export async function readApiJson<T = any>(res: Response): Promise<T> {
+  const contentType = (res.headers.get("content-type") || "").toLowerCase();
+  if (!contentType.includes("application/json")) {
+    throw new Error(
+      res.ok
+        ? "Réponse inattendue du serveur."
+        : `Service momentanément indisponible (${res.status}). Réessayez plus tard.`
+    );
+  }
+  const json = await res.json().catch(() => null);
+  if (json === null) {
+    throw new Error(`Réponse invalide du serveur (${res.status}).`);
+  }
+  return json as T;
+}
+
 function defaultSelect(json: unknown): unknown {
   if (json && typeof json === "object" && "data" in json) {
     return (json as { data: unknown }).data;
@@ -78,7 +100,9 @@ async function fetchQuery<T>(
           "/reset-password",
         ].some((prefix) => path.startsWith(prefix));
         if (!isPublic) {
-          window.location.href = "/login";
+          // Full reload is intentional here: cached queries are cleared above.
+          // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+          window.location.assign("/login");
         }
       }
 

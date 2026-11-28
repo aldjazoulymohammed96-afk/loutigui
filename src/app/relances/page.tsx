@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { ReminderLog, Installment, Organization } from "@/types";
 import { useApp } from "@/context/AppContext";
 import { formatCurrency, cn } from "@/lib/utils";
-import { useApiQuery } from "@/lib/api-client";
+import { readApiJson, useApiQuery } from "@/lib/api-client";
 import { MessageSquare, CheckCircle2, Send, AlertTriangle, Clock, Sparkles, XCircle } from "lucide-react";
 import { LazyRelanceModal as RelanceModal } from "@/components/LazyModals";
 import type { NotificationStatus } from "@/lib/notification-service";
@@ -63,7 +63,7 @@ export default function RelancesPage() {
               sequence: "J_PLUS_7",
             }),
           });
-          const data = await res.json();
+          const data = await readApiJson(res);
           if (res.ok && data.success) sent += 1;
           else failed += 1;
         } catch {

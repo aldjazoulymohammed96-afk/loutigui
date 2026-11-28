@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from "react";
 import { User, Organization, Currency, UserRole } from "@/types";
-import { clearQueryCache } from "@/lib/api-client";
+import { readApiJson, clearQueryCache } from "@/lib/api-client";
 
 interface AuthContextType {
   user: User | null;
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const res = await fetch("/api/auth/me", { cache: "no-store" });
         if (!res.ok) return;
-        const json = await res.json();
+        const json = await readApiJson(res);
         if (!cancelled && json?.success && json.data) {
           setUser(json.data.user);
           setOrganization(json.data.organization);
@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier, password }),
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (res.ok && data.success && data.data) {
         setUser(data.data.user);
         setOrganization(data.data.organization);
@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
         });
-        const data = await res.json();
+        const data = await readApiJson(res);
         if (res.ok && data.success && data.data) {
           setUser(data.data.user);
           setOrganization(data.data.organization);
@@ -128,7 +128,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setOrganization(null);
     clearQueryCache();
     if (typeof window !== "undefined") {
-      window.location.href = "/";
+      // Full reload guarantees every subscriber drops its authenticated state.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign("/");
     }
   }, []);
 
@@ -159,7 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(setupData),
         });
-        const data = await res.json();
+        const data = await readApiJson(res);
         if (res.ok && data.success && data.data) {
           setOrganization(data.data);
           clearQueryCache();

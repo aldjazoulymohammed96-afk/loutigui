@@ -1,4 +1,5 @@
 "use client";
+import { readApiJson } from "@/lib/api-client";
 
 import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -31,7 +32,7 @@ function CallbackContent() {
       const url = `/api/subscription/verify?session_id=${encodeURIComponent(sessionId)}&plan=${encodeURIComponent(plan)}`;
 
       const res = await fetch(url);
-      const data = await res.json();
+      const data = await readApiJson(res);
 
       if (data.success && data.activated) {
         setSuccess(true);

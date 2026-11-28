@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Settings, ShieldCheck } from "lucide-react";
 import { Organization } from "@/types";
 import { useApp } from "@/context/AppContext";
-import { useApiQuery } from "@/lib/api-client";
+import { readApiJson, useApiQuery } from "@/lib/api-client";
 import {
   AccountSettingsCard,
   BillingRulesCard,
@@ -125,7 +125,7 @@ export default function ParametresPage() {
           },
         }),
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (data.success) {
         initialRef.current = form;
         setCurrency(form.defaultCurrency);

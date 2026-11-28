@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Building, Unit } from "@/types";
 import { useApp } from "@/context/AppContext";
 import { formatCurrency } from "@/lib/utils";
-import { useApiQuery } from "@/lib/api-client";
+import { readApiJson, useApiQuery } from "@/lib/api-client";
 import { Building2, Plus, MapPin, X, DoorOpen, Eye } from "lucide-react";
 
 export default function PatrimoinePage() {
@@ -63,7 +63,7 @@ export default function PatrimoinePage() {
           totalUnits: createInitialUnit ? 1 : 0,
         }),
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (data.success) {
         const createdBld = data.data;
 
@@ -125,7 +125,7 @@ export default function PatrimoinePage() {
           status: "VACANT",
         }),
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (data.success) {
         showToast("Nouveau lot créé avec succès !", "success");
         setIsAddUnitOpen(false);

@@ -57,6 +57,7 @@ npm run start   # serveur de production
 - **Rôles** : `OWNER`, `AGENCY_ADMIN`, `MANAGER`, `ACCOUNTANT`, `FIELD_AGENT` ; contrôle fin par route (organisation, encaissement, export).
 - **Rate limiting** : connexion, inscription, réinitialisation, vérification de quittance et envoi manuel de relances. Les clés IP ne lisent que les en-têtes posés par la plateforme (`x-vercel-forwarded-for`).
 - **Réinitialisation de mot de passe** : jeton à usage unique, valable 1 heure, stocké haché, envoyé uniquement si une passerelle email est réellement configurée.
+- **Réponses API robustes** : le client refuse une réponse HTML (page d'erreur Vercel 403/503) et affiche un message stable au lieu de planter sur `Unexpected token '<'`.
 - **Sessions révocables** : chaque cookie porte un `tokenVersion` comparé à celui de l'utilisateur ; un changement ou une réinitialisation du mot de passe invalide immédiatement les anciens cookies.
 - **En-têtes de sécurité** : `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS et `Content-Security-Policy-Report-Only` (observation avant application stricte).
 - **Journal d'audit** : connexions, créations/modifications/suppressions, encaissements, export, activation d'abonnement. Consultable dans Paramètres (administrateurs).

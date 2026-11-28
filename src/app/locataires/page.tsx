@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 import { Tenant, Lease, Unit, Organization } from "@/types";
 import { useApp } from "@/context/AppContext";
 import { formatCurrency } from "@/lib/utils";
-import { useApiQuery } from "@/lib/api-client";
+import { readApiJson, useApiQuery } from "@/lib/api-client";
 import { Users, Plus, Phone, MessageSquare, Search, X, FileText, Home } from "lucide-react";
 import { LazyContratBailModal as ContratBailModal } from "@/components/LazyModals";
 
@@ -71,7 +71,7 @@ export default function LocatairesPage() {
           employer,
         }),
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (data.success) {
         const createdTenant = data.data;
 
@@ -132,7 +132,7 @@ export default function LocatairesPage() {
           depositAmount: (Number(modalRent) || unit?.rentAmount || 250000) * 2,
         }),
       });
-      const d = await res.json();
+      const d = await readApiJson(res);
       if (d.success) {
         showToast("Logement attribué et bail activé !", "success");
         setAssignTenant(null);

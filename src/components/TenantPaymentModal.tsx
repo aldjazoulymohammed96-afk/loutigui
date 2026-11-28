@@ -1,4 +1,5 @@
 "use client";
+import { readApiJson } from "@/lib/api-client";
 
 import React, { useState } from "react";
 import { CreditCard, Loader2, ShieldCheck, X } from "lucide-react";
@@ -40,7 +41,7 @@ export function TenantPaymentModal({
           provider,
         }),
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
 
       if (res.ok && data.success && data.data?.checkoutUrl) {
         // Redirect to the provider's hosted checkout. The payment is only

@@ -1,4 +1,5 @@
 "use client";
+import { readApiJson } from "@/lib/api-client";
 
 import React, { useState } from "react";
 import { ClipboardList, Loader2, X } from "lucide-react";
@@ -65,7 +66,7 @@ export function MaintenanceRequestModal({
           priority,
         }),
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (data.success) {
         showToast("Votre demande de maintenance a été transmise au gestionnaire", "success");
         triggerRefresh();

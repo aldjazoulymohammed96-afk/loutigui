@@ -1,4 +1,5 @@
 "use client";
+import { readApiJson } from "@/lib/api-client";
 
 import React, { Suspense, useState } from "react";
 import Link from "next/link";
@@ -31,7 +32,7 @@ function ResetPasswordForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, newPassword: password }),
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (res.ok && data.success) {
         setSuccess(true);
         setTimeout(() => router.push("/login"), 1500);

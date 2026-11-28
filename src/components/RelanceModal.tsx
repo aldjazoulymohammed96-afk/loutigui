@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Installment, Organization } from "@/types";
 import { useApp } from "@/context/AppContext";
-import { useApiQuery } from "@/lib/api-client";
+import { readApiJson, useApiQuery } from "@/lib/api-client";
 import { formatCurrency } from "@/lib/utils";
 import {
   X,
@@ -104,7 +104,7 @@ export function RelanceModal({ installment, onClose, onSuccess }: RelanceModalPr
           sequence,
         }),
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (data.success) {
         showToast(
           `Relance envoyée avec succès à ${installment.tenantName} par ${channel === "SMS" ? "SMS" : "email"} (${data.provider}).`,

@@ -30,7 +30,7 @@ import {
 import { Currency, SubscriptionInfo } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { useApp } from "@/context/AppContext";
-import { useApiQuery } from "@/lib/api-client";
+import { readApiJson, useApiQuery } from "@/lib/api-client";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { NotificationStatus } from "@/lib/notification-service";
 
@@ -670,7 +670,7 @@ export function AccountSettingsCard({ id }: { id?: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(profile),
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (data.success) {
         updateUser(data.data);
         triggerRefresh();
@@ -700,7 +700,7 @@ export function AccountSettingsCard({ id }: { id?: string }) {
           newPassword: password.next,
         }),
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (data.success) {
         setPassword({ current: "", next: "", confirm: "" });
         showToast("Mot de passe modifié avec succès", "success");

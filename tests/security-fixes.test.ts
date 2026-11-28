@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { isValidProviderId } from "@/lib/saspay";
 import { claimPaymentReference } from "@/lib/processed-payments";
 import { buildSessionPayload, signSession, verifySessionToken } from "@/lib/session";
+import { readApiJson } from "@/lib/api-client";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -45,5 +46,23 @@ describe("session token version", () => {
       })
     );
     expect(verifySessionToken(token)?.tokenVersion).toBe(3);
+  });
+});
+
+describe("client API responses", () => {
+  it("never exposes raw HTML parse errors to the UI", async () => {
+    const html = new Response("<!DOCTYPE html><html>Indisponible</html>", {
+      status: 503,
+      headers: { "content-type": "text/html; charset=utf-8" },
+    });
+    await expect(readApiJson(html)).rejects.toThrow(/Service momentanément indisponible \(503\)/);
+  });
+
+  it("still reads valid JSON responses", async () => {
+    const json = new Response(JSON.stringify({ success: true, checkoutUrl: "https://example.test" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+    await expect(readApiJson(json)).resolves.toMatchObject({ success: true });
   });
 });

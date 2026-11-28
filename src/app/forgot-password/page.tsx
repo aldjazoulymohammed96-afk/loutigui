@@ -1,4 +1,5 @@
 "use client";
+import { readApiJson } from "@/lib/api-client";
 
 import React, { useState } from "react";
 import Link from "next/link";
@@ -22,7 +23,7 @@ export default function ForgotPasswordPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier }),
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (res.ok && data.success) {
         setMessage(data.message);
       } else {

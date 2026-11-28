@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Installment, PaymentMethod, MobileMoneyProvider, Receipt } from "@/types";
 import { useApp } from "@/context/AppContext";
 import { formatCurrency } from "@/lib/utils";
-import { fetchQueryData } from "@/lib/api-client";
+import { readApiJson, fetchQueryData } from "@/lib/api-client";
 import {
   X,
   CreditCard,
@@ -130,7 +130,7 @@ export function EncaissementModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (!data.success) {
         throw new Error(data.error || "Erreur lors de l'encaissement");
       }

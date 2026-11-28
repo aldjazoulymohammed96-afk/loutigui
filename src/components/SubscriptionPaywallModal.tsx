@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Check, ShieldCheck, Lock, Loader2, ArrowRight } from "lucide-react";
 import { SubscriptionInfo, SubscriptionPlanType } from "@/types";
 import { useApp } from "@/context/AppContext";
-import { useApiQuery } from "@/lib/api-client";
+import { readApiJson, useApiQuery } from "@/lib/api-client";
 
 interface PlanItem {
   id: SubscriptionPlanType;
@@ -90,7 +90,7 @@ export default function SubscriptionPaywallModal() {
         body: JSON.stringify({ plan: planId }),
       });
 
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (data.success && data.checkoutUrl) {
         // Redirect to SasPay checkout page
         window.location.assign(data.checkoutUrl);

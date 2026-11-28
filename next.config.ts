@@ -24,12 +24,16 @@ const securityHeaders = [
       "object-src 'none'",
       "frame-ancestors 'self'",
       "form-action 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com",
+      // vercel.live is only used by the Vercel Toolbar when the owner is
+      // signed in; allowing it keeps the report-only console clean while we
+      // observe real violations. upgrade-insecure-requests is deliberately
+      // absent: browsers ignore it in a report-only policy.
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://vercel.live",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
-      "font-src 'self' data:",
-      "connect-src 'self' https://va.vercel-scripts.com",
-      "upgrade-insecure-requests",
+      "font-src 'self' data: https://vercel.live",
+      "connect-src 'self' https://va.vercel-scripts.com https://vercel.live",
+      "frame-src 'self' https://vercel.live",
     ].join("; "),
   },
 ];
