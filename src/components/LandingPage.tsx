@@ -323,7 +323,7 @@ export function LandingPage() {
                   </Link>
                   <Link
                     href="/signup"
-                    className="group inline-flex items-center gap-2 rounded-full bg-[var(--lp-accent-solid)] px-5 py-2.5 text-sm font-semibold text-[var(--lp-accent-on)] shadow-lg shadow-[var(--lp-accent-shadow)] transition hover:bg-[var(--lp-accent-solid-hover)]"
+                    className="group inline-flex items-center gap-2 rounded-full bg-[var(--lp-accent-text)] px-5 py-2.5 text-sm font-semibold text-[var(--lp-accent-on)] shadow-lg shadow-[var(--lp-accent-shadow)] transition hover:bg-[var(--lp-accent-solid-hover)]"
                   >
                     Créer mon compte
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -373,7 +373,7 @@ export function LandingPage() {
                   <Link
                     href="/"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="rounded-full bg-[var(--lp-accent-solid)] px-5 py-3 text-center text-sm font-semibold text-[var(--lp-accent-on)]"
+                    className="rounded-full bg-[var(--lp-accent-text)] px-5 py-3 text-center text-sm font-semibold text-[var(--lp-accent-on)]"
                   >
                     Tableau de bord
                   </Link>
@@ -389,7 +389,7 @@ export function LandingPage() {
                     <Link
                       href="/signup"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="rounded-full bg-[var(--lp-accent-solid)] px-5 py-3 text-center text-sm font-semibold text-[var(--lp-accent-on)]"
+                      className="rounded-full bg-[var(--lp-accent-text)] px-5 py-3 text-center text-sm font-semibold text-[var(--lp-accent-on)]"
                     >
                       Créer mon compte
                     </Link>
@@ -408,8 +408,8 @@ export function LandingPage() {
               <Reveal>
                 <span className="inline-flex items-center gap-2 rounded-full border border-[var(--lp-accent-border)] bg-[var(--lp-accent-soft)] px-4 py-2 text-xs font-semibold text-[var(--lp-accent-text)]">
                   <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--lp-accent-solid)] opacity-60" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--lp-accent-solid)]" />
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--lp-accent-text)] opacity-60" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--lp-accent-text)]" />
                   </span>
                   Proptech pensée pour l&apos;Afrique francophone
                 </span>
@@ -439,7 +439,7 @@ export function LandingPage() {
                 <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                   <Link
                     href="/signup"
-                    className="group inline-flex items-center justify-center gap-2 rounded-full bg-[var(--lp-accent-solid)] px-7 py-4 text-sm font-semibold text-[var(--lp-accent-on)] shadow-[var(--lp-accent-shadow)] transition hover:-translate-y-0.5 hover:bg-[var(--lp-accent-solid-hover)] active:translate-y-0"
+                    className="group inline-flex items-center justify-center gap-2 rounded-full bg-[var(--lp-accent-text)] px-7 py-4 text-sm font-semibold text-[var(--lp-accent-on)] shadow-[var(--lp-accent-shadow)] transition hover:-translate-y-0.5 hover:bg-[var(--lp-accent-solid-hover)] active:translate-y-0"
                   >
                     Commencer gratuitement
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -844,7 +844,7 @@ export function LandingPage() {
 
                   <Link
                     href="/signup"
-                    className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--lp-accent-solid)] px-6 py-4 text-sm font-semibold text-[var(--lp-accent-on)] transition hover:bg-[var(--lp-accent-solid-hover)]"
+                    className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--lp-accent-text)] px-6 py-4 text-sm font-semibold text-[var(--lp-accent-on)] transition hover:bg-[var(--lp-accent-solid-hover)]"
                   >
                     Sécuriser ce revenu <ArrowRight className="h-4 w-4" />
                   </Link>
@@ -910,7 +910,7 @@ export function LandingPage() {
                       href="/signup"
                       className={`mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3.5 text-sm font-semibold transition ${
                         plan.featured
-                          ? "bg-[var(--lp-accent-solid)] text-[var(--lp-accent-on)] hover:bg-[var(--lp-accent-solid-hover)]"
+                          ? "bg-[var(--lp-accent-text)] text-[var(--lp-accent-on)] hover:bg-[var(--lp-accent-solid-hover)]"
                           : "border border-[var(--lp-border-strong)] bg-[var(--lp-bg-subtle)] text-[var(--lp-text)] hover:bg-[var(--lp-hover-bg)]"
                       }`}
                     >
@@ -995,7 +995,7 @@ export function LandingPage() {
                 <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
                   <Link
                     href="/signup"
-                    className="group inline-flex items-center gap-2 rounded-full bg-[var(--lp-accent-solid)] px-8 py-4 text-sm font-semibold text-[var(--lp-accent-on)] shadow-[var(--lp-accent-shadow)] transition hover:-translate-y-0.5 hover:bg-[var(--lp-accent-solid-hover)]"
+                    className="group inline-flex items-center gap-2 rounded-full bg-[var(--lp-accent-text)] px-8 py-4 text-sm font-semibold text-[var(--lp-accent-on)] shadow-[var(--lp-accent-shadow)] transition hover:-translate-y-0.5 hover:bg-[var(--lp-accent-solid-hover)]"
                   >
                     Créer mon compte gratuitement
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -1018,7 +1018,7 @@ export function LandingPage() {
           <div className="flex flex-col justify-between gap-10 md:flex-row">
             <div className="max-w-sm">
               <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--lp-accent-solid)] text-[var(--lp-accent-on)]">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--lp-accent-text)] text-[var(--lp-accent-on)]">
                   <Building2 className="h-4 w-4" />
                 </span>
                 <span className="text-base font-semibold tracking-[0.16em] text-[var(--lp-text)]">
